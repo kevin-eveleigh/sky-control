@@ -12,6 +12,25 @@ used only to describe tested or possible compatibility.
 > Public beta safety: Sky Control is designed for a trusted LAN or private VPN.
 > Never port-forward it or expose it directly to the public internet.
 
+## Screenshots
+
+The same local controller adapts from a desktop dashboard to a phone-sized layout.
+
+<p align="center">
+  <img src="output/playwright/sky-control-desktop.png" alt="Sky Control desktop dashboard" width="68%">
+  <img src="output/playwright/sky-control-mobile.png" alt="Sky Control mobile dashboard" width="24%">
+</p>
+
+### Abandoned legacy app
+
+If your former controller looked like this, the unit may belong to the same app
+or protocol family. Interface similarity is a useful lead, not confirmation of
+hardware compatibility.
+
+<p align="center">
+  <img src="abandoned-app-screen.webp" alt="Abandoned legacy air-conditioner controller app" width="28%">
+</p>
+
 ## What v0.1 provides
 
 - UDP discovery for SWM100-family modules.
@@ -34,17 +53,17 @@ branded apps. A shared app design is a useful lead, never confirmation.
 
 ### Confirmed hardware
 
-| Manufacturer | Physical unit | Wi-Fi/protocol | Verification |
+| Manufacturer | Physical unit | Legacy app / Wi-Fi protocol | Verification |
 | --- | --- | --- | --- |
-| Tekno Point | SKY (one tested unit) | Skyworth SWM100 | Discovery, status and control verified against captured legacy-app traffic and live hardware |
+| Tekno Point | SKY (one tested unit) | Clima24 / Skyworth SWM100 | Discovery, status and control verified against captured Clima24 traffic and live hardware |
 
 ### Likely compatible and seeking testers
 
 | Candidate | Evidence | Status |
 | --- | --- | --- |
-| Units previously controlled by Easy Home AMS | Appears to be a branded variant of the same app family | Physical compatibility unconfirmed |
 | Units previously controlled by Tekno Point Smart Controller | Appears related to the tested app family | Models other than the tested SKY unit are unconfirmed |
-| Units previously controlled by Clima24 | Appears to be a branded variant of the same app family | Physical compatibility unconfirmed |
+| Other units previously controlled by Clima24 | The confirmed Tekno Point SKY unit used Clima24 | Models other than the tested SKY unit are unconfirmed |
+| Units previously controlled by Easy Home AMS | Appears to be a branded variant of the same app family | Physical compatibility unconfirmed |
 | Other units reporting SWM100-family protocol values | Protocol-family signal only | Seeking sanitized diagnostics and hardware tests |
 
 ### Reported incompatible
