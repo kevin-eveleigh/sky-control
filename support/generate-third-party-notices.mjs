@@ -21,6 +21,49 @@ function isPlatformBinary(packageName) {
   return Boolean(entry?.os || entry?.cpu);
 }
 
+function usableOnMacos(entry) {
+  if (entry.os && !entry.os.includes("darwin")) return false;
+  if (entry.cpu && !entry.cpu.includes("arm64") && !entry.cpu.includes("x64")) return false;
+  return true;
+}
+
+function resolveDependency(fromKey, name) {
+  let scope = fromKey;
+  for (;;) {
+    const candidate = scope ? `${scope}/node_modules/${name}` : `node_modules/${name}`;
+    if (lockfile.packages[candidate]) return candidate;
+    if (!scope) return undefined;
+    const parent = scope.lastIndexOf("/node_modules/");
+    scope = parent === -1 ? "" : scope.slice(0, parent);
+  }
+}
+
+// npm 10 also installs the dependencies of optional packages it skipped for the host
+// platform, which npm 11 prunes, so a traced bundle can carry wasm-only fallbacks that
+// macOS never loads. Listing only what a macOS install can reach keeps the notices the
+// same whichever npm version built the bundle.
+function macosReachableNames() {
+  const dependencyNames = (entry) => [
+    ...Object.keys(entry.dependencies || {}),
+    ...Object.keys(entry.optionalDependencies || {}),
+    ...Object.keys(entry.peerDependencies || {}),
+    ...Object.keys(entry.devDependencies || {}),
+  ];
+  const queue = dependencyNames(lockfile.packages[""]).map((name) => resolveDependency("", name));
+  const visited = new Set();
+  while (queue.length > 0) {
+    const key = queue.pop();
+    if (!key || visited.has(key)) continue;
+    const entry = lockfile.packages[key];
+    if (!entry || !usableOnMacos(entry)) continue;
+    visited.add(key);
+    for (const name of dependencyNames(entry)) queue.push(resolveDependency(key, name));
+  }
+  return new Set(
+    [...visited].map((key) => key.slice(key.lastIndexOf("node_modules/") + "node_modules/".length)),
+  );
+}
+
 function macosBinaryNames() {
   return Object.keys(lockfile.packages)
     .filter((key) => key.startsWith("node_modules/@img/"))
@@ -92,10 +135,13 @@ async function packageNotice(runtimeDirectory) {
 }
 
 await access(runtimeModules);
+const reachable = macosReachableNames();
 const tracedDirectories = [];
 for (const directory of await packageDirectories(runtimeModules)) {
   const traced = JSON.parse(await readFile(path.join(directory, "package.json"), "utf8"));
-  if (!isPlatformBinary(traced.name)) tracedDirectories.push(directory);
+  if (isPlatformBinary(traced.name)) continue;
+  if (lockfile.packages[`node_modules/${traced.name}`] && !reachable.has(traced.name)) continue;
+  tracedDirectories.push(directory);
 }
 const notices = await Promise.all(tracedDirectories.map(packageNotice));
 for (const name of macosBinaryNames()) {
@@ -152,10 +198,44 @@ const body = [
   ]),
 ].join("\n");
 
+function packageHeadings(text) {
+  const headings = [];
+  let insideFence = false;
+  for (const line of text.split("\n")) {
+    if (line.startsWith("```")) insideFence = !insideFence;
+    else if (!insideFence && line.startsWith("## ")) headings.push(line.slice(3));
+  }
+  return headings;
+}
+
+function firstDifference(current, generated) {
+  const currentLines = current.split("\n");
+  const generatedLines = generated.split("\n");
+  for (let index = 0; index < Math.max(currentLines.length, generatedLines.length); index += 1) {
+    if (currentLines[index] === generatedLines[index]) continue;
+    return [
+      `First difference at line ${index + 1}:`,
+      `  committed: ${JSON.stringify(currentLines[index] ?? "<end of file>")}`,
+      `  generated: ${JSON.stringify(generatedLines[index] ?? "<end of file>")}`,
+    ].join("\n");
+  }
+  return "";
+}
+
 if (checkOnly) {
   const current = await readFile(destination, "utf8").catch(() => "");
   if (current !== body) {
-    throw new Error("THIRD_PARTY_NOTICES.md is stale. Run npm run desktop:notices after building.");
+    const committed = packageHeadings(current);
+    const generated = packageHeadings(body);
+    const details = [
+      `Packaged runtime on ${process.platform}-${process.arch}, Node ${process.versions.node}.`,
+      `Added by this build: ${generated.filter((item) => !committed.includes(item)).join(", ") || "none"}`,
+      `Absent from this build: ${committed.filter((item) => !generated.includes(item)).join(", ") || "none"}`,
+      firstDifference(current, body),
+    ].filter(Boolean);
+    throw new Error(
+      ["THIRD_PARTY_NOTICES.md is stale. Run npm run desktop:notices after building.", ...details].join("\n"),
+    );
   }
   console.log("Third-party notices match the packaged runtime.");
 } else {
