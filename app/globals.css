@@ -1006,16 +1006,27 @@ footer button:hover {
   transform: translateX(20px);
 }
 .token-field {
-  display: flex;
+  display: grid;
   gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   margin-top: 7px;
 }
 .token-field input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.025em;
   margin-top: 0;
+  min-width: 0;
 }
 .token-field .secondary-button {
   flex: 0 0 auto;
   min-height: 0;
+}
+.token-copy-status {
+  color: var(--muted);
+  font-size: 0.64rem;
+  line-height: 1.45;
+  margin: 6px 0 0;
+  min-height: 0.95rem;
 }
 .project-notice {
   border-top: 1px solid var(--line);
@@ -1144,6 +1155,12 @@ footer button:hover {
   }
   .modal-actions button {
     flex: 1;
+  }
+  .token-field {
+    grid-template-columns: 1fr 1fr;
+  }
+  .token-field input {
+    grid-column: 1 / -1;
   }
 }
 

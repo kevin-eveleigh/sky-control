@@ -21,6 +21,13 @@ The same local controller adapts from a desktop dashboard to a phone-sized layou
   <img src="output/playwright/sky-control-mobile.png" alt="Sky Control mobile dashboard" width="24%">
 </p>
 
+The macOS beta keeps bridge status and common lifecycle actions in the menu bar.
+
+<p align="center">
+  <img src="docs/assets/sky-control-menu-running.png" alt="Sky Control menu-bar app with the bridge running" width="42%">
+  <img src="docs/assets/sky-control-menu-error.png" alt="Sky Control menu-bar app showing an isolated bridge error" width="42%">
+</p>
+
 ### Abandoned legacy app
 
 If your former controller looked like this, the unit may belong to the same app
@@ -28,10 +35,10 @@ or protocol family. Interface similarity is a useful lead, not confirmation of
 hardware compatibility.
 
 <p align="center">
-  <img src="abandoned-app-screen.webp" alt="Abandoned legacy air-conditioner controller app" width="28%">
+  <img src="docs/assets/abandoned-app-screen.webp" alt="Abandoned legacy air-conditioner controller app" width="28%">
 </p>
 
-## What v0.1 provides
+## What this beta provides
 
 - UDP discovery for SWM100-family modules.
 - TCP status reading and verified local controls.
@@ -40,6 +47,7 @@ hardware compatibility.
 - Optional bearer-token authentication.
 - Sanitized diagnostics for compatibility reports.
 - A per-user macOS LaunchAgent installer.
+- An unsigned macOS menu-bar application for private beta testing.
 - Portable protocol fixtures and hardware-free tests.
 
 This foundation does not include the planned Windows tray application, direct
@@ -80,6 +88,7 @@ The repository intentionally remains one small Next.js application:
 
 ```text
 app/                    Web controller and local HTTP route handlers
+desktop/                Native menu shell and shared lifecycle supervision
 lib/airco/protocol.ts   Pure packet codec and CRC handling
 lib/airco/client.ts     TCP sessions and device communication
 lib/airco/discovery.ts  UDP discovery
@@ -91,14 +100,15 @@ tests/                  Hardware-free automated tests
 ```
 
 The protocol codec never opens a socket. Automated tests cannot discover or
-control a physical air conditioner. The architecture decision is recorded in
-[docs/adr/0001-local-first-shared-protocol.md](docs/adr/0001-local-first-shared-protocol.md).
+control a physical air conditioner. The architecture decisions are recorded in
+[ADR 0001](docs/adr/0001-local-first-shared-protocol.md) and
+[ADR 0002](docs/adr/0002-electron-menu-bar-bridge.md).
 
 ## Requirements
 
-- Node.js 22.13 or newer (Node 22 and 24 are validated in CI).
-- npm, included with Node.js.
-- A Mac, Windows or Linux machine on the same local network as the unit.
+- The packaged menu-bar beta requires macOS. Its Electron runtime includes Node.js.
+- Source and headless installations require Node.js 22.13 or newer (Node 22 and 24 are validated in CI) and npm.
+- The bridge machine must be on the same local network as the unit.
 - For discovery, permission to use UDP broadcast/multicast on the LAN.
 
 ## Install and run
@@ -129,7 +139,11 @@ action. The bridge must remain running for the shortcut to work.
 ## Configuration
 
 Copy `.env.example` to `.env.local`. Every local environment file and runtime
-state file is ignored by Git.
+state file is ignored by Git. For the menu-bar app, the optional file lives at
+`~/Library/Application Support/Sky Control/.env.local`. An environment variable
+provided by the launching process takes precedence over the same key in that
+file; this is useful for managed deployments but can make a file value appear to
+be ignored.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -191,7 +205,57 @@ It does not contain access tokens, device IDs, user-assigned names or locations,
 IP addresses, MAC addresses, local paths, logs, state values, or full packet
 contents. Review any file before posting it publicly.
 
-## macOS background service
+## macOS installation modes
+
+Sky Control has three distinct installation modes. Run only one production
+bridge on a given address and port.
+
+### Menu-bar application (recommended private beta)
+
+Build the unsigned local artifacts on a Mac with Node.js 22.13 or newer:
+
+```bash
+npm ci
+npm ci --prefix desktop/tooling
+npm run desktop:package
+```
+
+The command creates `dist/mac-*/Sky Control.app`, a DMG, and a ZIP for the
+current Mac architecture, then validates that the app contains its bridge,
+static assets, menu-bar configuration, and licences. Open the DMG, drag **Sky
+Control** to Applications, and open it. The beta is not signed or notarized, so
+macOS may require a control-click → **Open** confirmation or approval in
+**System Settings → Privacy & Security**. Do not disable Gatekeeper globally.
+
+The app has no permanent Dock icon or main window. It starts its bundled bridge
+when opened and remains in the menu bar when the controller browser tab closes.
+Its menu provides bridge status, start, stop, restart, controller, copy-address,
+logs, Start at Login, About, and Quit actions. Each configured airco also gets a
+submenu with room and target readings, an explicit device-status refresh, a
+power toggle, mode choices, and target temperatures from 16–30°C. Opening the
+menu and its periodic menu refresh only read the local bridge cache; only
+**Refresh Device Status** contacts the airco, and controls are sent only after a
+deliberate menu selection. Start at Login is off by default and uses the macOS
+login-item setting; migration from an existing headless service offers to enable
+it explicitly.
+
+The packaged app does not require this source checkout or a separate Node.js
+installation. Runtime files are read from the app bundle. Writable files are:
+
+| Purpose | Location |
+| --- | --- |
+| Device configuration | `~/Library/Application Support/Sky Control/data/aircos.json` |
+| Access settings | `~/Library/Application Support/Sky Control/data/settings.json` |
+| Optional bridge environment | `~/Library/Application Support/Sky Control/.env.local` |
+| Menu-bar bridge log | `~/Library/Logs/Sky Control/bridge.log` |
+
+To uninstall, turn off **Start at Login**, choose **Quit**, and move Sky Control
+from Applications to the Trash. Configuration is deliberately retained. If the
+app cannot open, disable it in **System Settings → General → Login Items**. Remove
+the Application Support and Logs folders manually only after confirming their
+configuration is no longer needed.
+
+### Headless LaunchAgent (advanced)
 
 The installer builds a standalone runtime and creates a per-user LaunchAgent.
 It does not require administrator access.
@@ -212,6 +276,22 @@ Uninstall removes the LaunchAgent but deliberately keeps runtime configuration
 for recovery. After confirming it is no longer needed, remove the printed
 runtime directory manually. Re-running `service:install` updates the copied
 runtime without modifying the source configuration first.
+
+The menu-bar app detects both the current and legacy LaunchAgent. It will not
+start another bridge when an installed or running agent is configured for the
+same port. Choose **Switch from Headless Service…** only when ready to migrate;
+after confirmation the app unloads the agent, retains its plist with a
+`.menu-bar-disabled` backup name (adding a numeric suffix rather than overwriting
+an earlier backup), keeps the shared data directory, enables Start at Login, and
+starts the managed bridge. To return to headless operation, first
+turn off Start at Login and quit the app, then run `npm run service:install`
+from a source checkout. Never run both modes on the same port.
+
+### Source/development mode
+
+Use `npm run dev` for web development and `npm run desktop:dev` for the native
+shell against a freshly built standalone runtime. Development mode requires the
+repository and Node.js and is not an installation method.
 
 ## Troubleshooting
 
@@ -235,12 +315,34 @@ runtime without modifying the source configuration first.
 - When `AIRCO_TOKEN` is set, the UI cannot replace or clear it.
 - Clear the browser's stored token and reconnect after changing the server token.
 
+### The menu says the headless service conflicts
+
+Another Sky Control LaunchAgent is installed or running on the configured port.
+Keep the headless service, or use the explicit migration action in the menu.
+Sky Control never stops or uninstalls it merely because the app was opened.
+
+### The menu says the port is already in use
+
+Another process owns the configured HTTP port. Stop that process or choose a
+different `SKY_CONTROL_PORT` in the Application Support `.env.local`, then try
+**Start Bridge** again. Details remain in the private per-user bridge log.
+
+### Unsigned beta will not open
+
+Confirm the artifact came from the expected local build, then use macOS's
+control-click → **Open** flow or Privacy & Security settings. A future release
+should use a Developer ID certificate, hardened runtime, notarization, and
+stapling; none of those are claimed for this beta.
+
 ## Development and validation
 
 ```bash
 npm test       # hardware-free protocol/configuration regression tests
 npm run lint   # ESLint
 npm run build  # production build and TypeScript validation
+npm run desktop:check     # CI-safe desktop source/bundle validation
+npm run desktop:package   # macOS app + unsigned DMG/ZIP + validation
+npm run desktop:validate  # validate an already packaged app
 ```
 
 Next.js 16 uses Turbopack by default; this project opts into its documented

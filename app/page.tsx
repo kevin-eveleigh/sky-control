@@ -149,6 +149,39 @@ function storeToken(value: string) {
   notifyTokenChange();
 }
 
+/**
+ * Clipboard.writeText is restricted to secure contexts in some browsers. Sky
+ * Control normally runs over plain HTTP on a trusted LAN, so keep a user-gesture
+ * fallback for those browsers instead of silently losing the generated token.
+ */
+async function copyText(value: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return true;
+    }
+  } catch {
+    // Fall through to the selection-based copy path below.
+  }
+
+  const temporary = document.createElement("textarea");
+  temporary.value = value;
+  temporary.setAttribute("readonly", "");
+  temporary.style.position = "fixed";
+  temporary.style.opacity = "0";
+  temporary.style.pointerEvents = "none";
+  document.body.appendChild(temporary);
+  temporary.select();
+  let copied = false;
+  try {
+    copied = document.execCommand("copy");
+  } catch {
+    copied = false;
+  }
+  temporary.remove();
+  return copied;
+}
+
 /** Server renders `false`, the client renders `true` from its first paint. */
 const subscribeNever = () => () => {};
 const isHydrated = () => true;
@@ -438,6 +471,7 @@ export default function Home() {
   const [showTime, setShowTime] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tokenDraft, setTokenDraft] = useState("");
+  const [tokenCopyMessage, setTokenCopyMessage] = useState("");
   const [tokenWanted, setTokenWanted] = useState(false);
   const [selectedId, setSelectedId] = useState("");
   const [pending, setPending] = useState<PendingMap>({});
@@ -834,16 +868,33 @@ export default function Home() {
   function openSettings() {
     setTokenWanted(Boolean(snapshot?.authRequired));
     setTokenDraft("");
+    setTokenCopyMessage("");
     setError("");
     setSettingsOpen(true);
   }
 
-  function generateToken() {
+  async function generateToken() {
     // getRandomValues works in insecure contexts too, which matters because
     // this is normally reached over plain http on the LAN.
     const bytes = new Uint8Array(16);
     crypto.getRandomValues(bytes);
-    setTokenDraft([...bytes].map((b) => b.toString(16).padStart(2, "0")).join(""));
+    const next = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+    setTokenDraft(next);
+    const copied = await copyText(next);
+    setTokenCopyMessage(
+      copied
+        ? "Generated token copied to the clipboard."
+        : "Generated token is ready. Select it and copy it before leaving Settings.",
+    );
+  }
+
+  async function copyToken() {
+    const copied = await copyText(tokenDraft.trim());
+    setTokenCopyMessage(
+      copied
+        ? "Token copied to the clipboard."
+        : "Could not copy automatically. Select the token and copy it manually.",
+    );
   }
 
   async function saveAccess(event: React.FormEvent) {
@@ -870,6 +921,7 @@ export default function Home() {
       acceptSnapshot(data);
       setSettingsOpen(false);
       setTokenDraft("");
+      setTokenCopyMessage("");
     } catch (cause) {
       setError(messageOf(cause, "Could not save settings"));
     } finally {
@@ -1300,25 +1352,45 @@ export default function Home() {
                     <div className="token-field">
                       <input
                         id="settings-token"
-                        type="password"
+                        type="text"
                         value={tokenDraft}
-                        onChange={(event) => setTokenDraft(event.target.value)}
+                        onChange={(event) => {
+                          setTokenDraft(event.target.value);
+                          setTokenCopyMessage("");
+                        }}
                         placeholder={
                           snapshot?.authRequired
                             ? "Unchanged"
                             : `At least ${MIN_TOKEN_LENGTH} characters`
                         }
-                        autoComplete="new-password"
+                        aria-describedby="settings-token-status"
+                        autoCapitalize="none"
                         spellCheck={false}
                       />
                       <button
                         type="button"
                         className="secondary-button"
-                        onClick={generateToken}
+                        onClick={() => void generateToken()}
                       >
                         Generate
                       </button>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={!tokenDraft.trim()}
+                        onClick={() => void copyToken()}
+                      >
+                        Copy
+                      </button>
                     </div>
+                    <p
+                      id="settings-token-status"
+                      className="token-copy-status"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      {tokenCopyMessage}
+                    </p>
                   </div>
                 )
               )}

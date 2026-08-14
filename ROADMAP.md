@@ -12,7 +12,10 @@ protocol accuracy, and a simple local installation remain constraints throughout
 
 ## Desktop bridges
 
-- macOS menu-bar packaging, health status, QR pairing, and signed distribution.
+- macOS menu-bar private beta: bundled bridge lifecycle, health status,
+  LaunchAgent migration safeguards, Start at Login, and unsigned local packaging.
+- Future macOS distribution: Developer ID signing, notarization, hardened runtime,
+  universal artifacts, and a separately designed QR-pairing flow.
 - Windows system-tray bridge with equivalent lifecycle and diagnostics.
 - Keep the protocol specification shared while allowing platform-appropriate
   runtime implementations.

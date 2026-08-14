@@ -1,9 +1,11 @@
 {
   "name": "sky-control",
-  "version": "0.1.0",
+  "version": "0.2.0-beta.1",
   "description": "Local-first control for air conditioners using the Skyworth SWM100 protocol.",
+  "author": "Sky Control contributors",
   "license": "MIT",
   "private": true,
+  "main": "desktop/main.mjs",
   "skyControl": {
     "displayName": "Sky Control",
     "serviceSlug": "sky-control",
@@ -21,6 +23,12 @@
     "service:status": "zsh support/service.sh status",
     "service:restart": "zsh support/service.sh restart",
     "service:uninstall": "zsh support/service.sh uninstall",
+    "desktop:dev": "npm run build && desktop/tooling/node_modules/.bin/electron .",
+    "desktop:install-tooling": "npm ci --prefix desktop/tooling",
+    "desktop:notices": "node support/generate-third-party-notices.mjs",
+    "desktop:check": "node support/generate-third-party-notices.mjs --check && node support/check-desktop.mjs",
+    "desktop:package": "node support/package-desktop.mjs",
+    "desktop:validate": "node support/validate-desktop-package.mjs",
     "test": "node --import tsx --test tests/index.mjs",
     "lint": "eslint . --ignore-pattern .next"
   },
@@ -40,5 +48,59 @@
     "tsx": "^4.20.6",
     "typescript": "5.9.3"
   },
-  "type": "module"
+  "type": "module",
+  "build": {
+    "appId": "org.skycontrol.desktop",
+    "productName": "Sky Control",
+    "electronVersion": "43.4.0",
+    "asar": true,
+    "artifactName": "Sky-Control-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "dist",
+      "buildResources": "desktop/assets"
+    },
+    "files": [
+      "desktop/**/*.mjs",
+      "!desktop/tooling/**",
+      "package.json",
+      "LICENSE"
+    ],
+    "extraResources": [
+      {
+        "from": ".next/desktop-standalone",
+        "to": "bridge"
+      },
+      {
+        "from": "desktop/assets",
+        "to": "desktop-assets",
+        "filter": [
+          "**/*.png"
+        ]
+      },
+      {
+        "from": "LICENSE",
+        "to": "licenses/Sky-Control-LICENSE.txt"
+      },
+      {
+        "from": "THIRD_PARTY_NOTICES.md",
+        "to": "licenses/THIRD_PARTY_NOTICES.md"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.utilities",
+      "icon": "desktop/assets/app-icon.png",
+      "identity": null,
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "extendInfo": {
+        "LSUIElement": true
+      }
+    },
+    "dmg": {
+      "title": "Sky Control ${version}",
+      "sign": false
+    }
+  }
 }

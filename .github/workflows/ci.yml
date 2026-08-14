@@ -25,3 +25,18 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
+      - run: npm run desktop:check
+
+  desktop-package:
+    name: macOS desktop package
+    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/')
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm ci --prefix desktop/tooling
+      - run: npm run desktop:package
