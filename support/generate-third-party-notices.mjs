@@ -6,6 +6,15 @@ const runtimeModules = path.join(root, ".next", "desktop-standalone", "runtime_m
 const destination = path.join(root, "THIRD_PARTY_NOTICES.md");
 const checkOnly = process.argv.includes("--check");
 
+function normalizeLicenseText(text) {
+  return text
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .join("\n")
+    .trim();
+}
+
 async function packageDirectories(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
   const result = [];
@@ -47,7 +56,7 @@ async function packageNotice(runtimeDirectory) {
   const sourceDirectory = path.join(root, "node_modules", ...runtimePackage.name.split("/"));
   const sourcePackage = JSON.parse(await readFile(path.join(sourceDirectory, "package.json"), "utf8"));
   const licenseFile = await licensePath(runtimePackage.name, sourceDirectory);
-  const licenseText = (await readFile(licenseFile, "utf8")).trim();
+  const licenseText = normalizeLicenseText(await readFile(licenseFile, "utf8"));
   return {
     name: runtimePackage.name,
     version: runtimePackage.version,
@@ -65,9 +74,9 @@ notices.push({
   name: "electron",
   version: desktopTooling.devDependencies.electron,
   license: "MIT",
-  licenseText: (
-    await readFile(path.join(root, "support", "licenses", "Electron-LICENSE.txt"), "utf8")
-  ).trim(),
+  licenseText: normalizeLicenseText(
+    await readFile(path.join(root, "support", "licenses", "Electron-LICENSE.txt"), "utf8"),
+  ),
 });
 notices.sort((left, right) =>
   `${left.name}@${left.version}`.localeCompare(`${right.name}@${right.version}`),
