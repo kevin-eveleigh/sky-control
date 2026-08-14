@@ -1,0 +1,52 @@
+name: Compatibility report
+description: Report results from a specific physical air conditioner
+title: "[Compatibility]: "
+labels: [compatibility]
+body:
+  - type: input
+    id: hardware
+    attributes:
+      label: Physical manufacturer and exact model
+      description: Do not include serial numbers or other unique identifiers.
+    validations:
+      required: true
+  - type: input
+    id: app
+    attributes:
+      label: Legacy app previously used
+      description: App branding is context, not proof of compatibility.
+  - type: dropdown
+    id: discovery
+    attributes:
+      label: Discovery result
+      options: [Found, Not found, Not tested]
+    validations:
+      required: true
+  - type: dropdown
+    id: status
+    attributes:
+      label: Status reading
+      options: [Works, Fails, Not tested]
+    validations:
+      required: true
+  - type: textarea
+    id: controls
+    attributes:
+      label: Controls physically verified
+      description: List each tested control and observed result; say “none” for read-only testing.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Safe diagnostics
+      description: Attach reviewed safe-diagnostics JSON. Never attach raw captures or vendor software.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety and privacy
+      options:
+        - label: I tested hardware I own or am authorized to control.
+          required: true
+        - label: I removed tokens, addresses, MACs, serials, and other unique identifiers.
+          required: true

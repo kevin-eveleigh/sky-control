@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "notice": "Sanitized protocol fixtures contain packet bytes only; network and device identifiers were removed.",
+  "frames": {
+    "coolVariable": {
+      "hex": "7a7ad5211c0000a30a0a190000690400c8000000000100000000b4d8",
+      "expectedState": {
+        "power": true,
+        "targetTemperature": 20,
+        "indoorTemperature": 25,
+        "mode": "cool",
+        "fan": "variable",
+        "swing": "off",
+        "sleep": false,
+        "quiet": false,
+        "light": true,
+        "health": true,
+        "eco": false
+      }
+    },
+    "coolAuto": {
+      "hex": "7a7ad5211c0000a30a0a18050009040088000000000100000000535f",
+      "expectedState": {
+        "power": true,
+        "targetTemperature": 20,
+        "indoorTemperature": 24.5,
+        "mode": "cool",
+        "fan": "auto",
+        "swing": "off",
+        "sleep": false,
+        "quiet": false,
+        "light": true,
+        "health": false,
+        "eco": false
+      }
+    },
+    "healthOn": {
+      "hex": "7a7ad5211c0000a30a0a190000090400c80000000001000000001459"
+    },
+    "ecoOn": {
+      "hex": "7a7ad5211c0000a30a0a19000009040089000000000100000000050a"
+    }
+  },
+  "expectedFrames": {
+    "statusQuery": "7a7a21d50c0000a20202f82f",
+    "powerOff": "7a7a21d5180000a102020000610400c80000000000004a93"
+  }
+}

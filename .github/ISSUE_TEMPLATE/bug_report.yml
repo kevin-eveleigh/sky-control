@@ -1,0 +1,39 @@
+name: Bug report
+description: Report a reproducible Sky Control problem
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never post tokens, local IPs, MAC addresses, proprietary apps, or raw captures. Use the reviewed safe-diagnostics download.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include the operation attempted and the result you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: Physical manufacturer and model
+      description: Do not provide a serial number, MAC address, or IP address.
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Safe diagnostics
+      description: Paste or attach the reviewed safe-diagnostics JSON, or explain why unavailable.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I reviewed this report and removed tokens, private addresses, identifiers, and raw captures.
+          required: true
