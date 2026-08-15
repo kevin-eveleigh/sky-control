@@ -18,6 +18,15 @@ and releases will use Semantic Versioning once published.
 
 ### Added
 
+- Direct, HACS-compatible Home Assistant custom integration beta with scan and
+  manual UI setup, read-only validation, coordinated polling, offline recovery,
+  one native climate entity per unit, and privacy-preserving diagnostics.
+- Fully typed asynchronous Python SWM100 library boundary with pure packet
+  codec, bounded UDP/TCP sessions, normalized errors, and per-unit serialization.
+- Shared TypeScript/Python conformance vectors for every core climate command,
+  explicitly distinguishing captures from implementation-derived packets.
+- Python 3.14 / Home Assistant 2026.8.2 lint, type, test, coverage, package,
+  Hassfest, and HACS validation workflows plus a local installation archive.
 - Native per-airco menu controls for explicit status refresh, power, mode, and
   16–30°C target temperature, with room and target readings in the menu.
 - Unsigned macOS menu-bar beta with native lifecycle, status, controller, logs,
@@ -38,6 +47,8 @@ and releases will use Semantic Versioning once published.
 
 ### Changed
 
+- The architecture now includes a direct Python Home Assistant client while the
+  web and desktop bridge continue to use the verified TypeScript implementation.
 - Desktop test-path overrides are disabled in packaged applications.
 - Third-party notices are generated from the exact packaged runtime with full
   distributed license texts and package versions.

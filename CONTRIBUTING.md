@@ -14,16 +14,34 @@ unofficial community project, so accuracy and privacy matter more than breadth.
 ## Development workflow
 
 1. Use Node.js 22.13 or newer and run `npm ci`.
-2. Copy `.env.example` only if local manual testing is needed.
-3. Do not configure a physical device for ordinary automated development.
-4. Run `npm test`, `npm run lint`, and `npm run build`.
-5. Explain user-visible behavior, security impact, and validation in the PR.
+2. Use Python 3.14.2 or newer, create `.venv`, and run
+   `.venv/bin/python -m pip install -e '.[dev]'` for Home Assistant work.
+3. Copy `.env.example` only if local manual web testing is needed.
+4. Do not configure a physical device for ordinary automated development.
+5. Run the Node and Python checks below.
+6. Explain user-visible behavior, security impact, and validation in the PR.
+
+```bash
+npm test
+npm run lint
+npm run build
+.venv/bin/pytest
+.venv/bin/ruff check custom_components tests/python support/*.py
+.venv/bin/ruff format --check custom_components tests/python support/*.py
+.venv/bin/mypy custom_components/sky_control
+.venv/bin/python support/validate-home-assistant.py
+```
 
 Tests must not require, discover, or control physical hardware. New verified
 packet behavior belongs in identifier-free JSON under `fixtures/protocol/` and
 must include a focused regression test. Keep fixtures usable by both TypeScript
-and future Python implementations: hex strings, explicit expected values, and
-no runtime-specific encoding.
+and Python: hex strings, explicit expected values, and no runtime-specific
+encoding. Captured packets and implementation-derived vectors must remain
+clearly labeled; never describe a derived packet as physically verified.
+
+Home Assistant network tests may use patched transports or loopback-only
+simulators. They must never broadcast, resolve a household hostname, or use a
+configured physical endpoint. Setup tests must prove validation is read-only.
 
 `support/poke-bit.mjs` is a manual protocol-research tool that can control real
 hardware. It is not part of automated validation. Use it only on hardware you

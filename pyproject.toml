@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sky-control-home-assistant-dev"
+version = "0.3.0b1"
+description = "Development tooling for the Sky Control Home Assistant custom integration"
+requires-python = ">=3.14.2"
+
+[project.optional-dependencies]
+dev = [
+  "mypy==2.3.0",
+  "pytest-homeassistant-custom-component==0.13.356",
+  "ruff==0.16.0",
+]
+
+[tool.setuptools]
+packages = []
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --cov=custom_components.sky_control --cov-report=term-missing --cov-fail-under=90"
+asyncio_mode = "auto"
+pythonpath = ["."]
+testpaths = ["tests/python"]
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["ASYNC", "B", "E", "F", "I", "RUF", "UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["custom_components.sky_control"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+files = ["custom_components/sky_control"]
+exclude = ["__pycache__"]
+warn_unused_ignores = true
+show_error_codes = true
+plugins = []

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "notice": "Sanitized protocol fixtures contain packet bytes only; network and device identifiers were removed.",
   "frames": {
     "coolVariable": {
@@ -44,5 +44,32 @@
   "expectedFrames": {
     "statusQuery": "7a7a21d50c0000a20202f82f",
     "powerOff": "7a7a21d5180000a102020000610400c80000000000004a93"
+  },
+  "derivedControlVectors": {
+    "notice": "Implementation-derived conformance vectors generated from frames.coolVariable. These packets are not captured traffic and are not claims of physical verification.",
+    "sourceFrame": "coolVariable",
+    "vectors": [
+      { "request": { "action": "power", "value": true }, "hex": "7a7a21d5180000a102020000690400c8000000000000a012" },
+      { "request": { "action": "power", "value": false }, "hex": "7a7a21d5180000a102020000610400c80000000000004a93" },
+      { "request": { "action": "temperature", "value": 16 }, "hex": "7a7a21d5180000a102020000690000c80000000000006020" },
+      { "request": { "action": "temperature", "value": 23 }, "hex": "7a7a21d5180000a102020000690700c80000000000005006" },
+      { "request": { "action": "temperature", "value": 30 }, "hex": "7a7a21d5180000a102020000690e00c8000000000000006c" },
+      { "request": { "action": "mode", "value": "auto" }, "hex": "7a7a21d5180000a102020000680400c80000000000006543" },
+      { "request": { "action": "mode", "value": "cool" }, "hex": "7a7a21d5180000a102020000690400c8000000000000a012" },
+      { "request": { "action": "mode", "value": "dry" }, "hex": "7a7a21d5180000a1020200006a0400c8000000000000afe2" },
+      { "request": { "action": "mode", "value": "fan" }, "hex": "7a7a21d5180000a1020200006b0400c80000000000006ab3" },
+      { "request": { "action": "mode", "value": "heat" }, "hex": "7a7a21d5180000a1020200006c0400c8000000000000b002" },
+      { "request": { "action": "fan", "value": "auto" }, "hex": "7a7a21d5180000a102020000090400c80000000000001e11" },
+      { "request": { "action": "fan", "value": "gear-1" }, "hex": "7a7a21d5180000a102020000190400c80000000000008b10" },
+      { "request": { "action": "fan", "value": "gear-2" }, "hex": "7a7a21d5180000a102020000290400c80000000000007410" },
+      { "request": { "action": "fan", "value": "gear-3" }, "hex": "7a7a21d5180000a102020000390400c8000000000000e111" },
+      { "request": { "action": "fan", "value": "gear-4" }, "hex": "7a7a21d5180000a102020000490400c8000000000000ca13" },
+      { "request": { "action": "fan", "value": "gear-5" }, "hex": "7a7a21d5180000a102020000590400c80000000000005f12" },
+      { "request": { "action": "fan", "value": "variable" }, "hex": "7a7a21d5180000a102020000690400c8000000000000a012" },
+      { "request": { "action": "swing", "value": "off" }, "hex": "7a7a21d5180000a102020000690400c8000000000000a012" },
+      { "request": { "action": "swing", "value": "vertical" }, "hex": "7a7a21d5180000a102020000690401c80000000000006cd3" },
+      { "request": { "action": "swing", "value": "horizontal" }, "hex": "7a7a21d5180000a102020000690410c8000000000000ac13" },
+      { "request": { "action": "swing", "value": "both" }, "hex": "7a7a21d5180000a102020000690411c800000000000060d2" }
+    ]
   }
 }

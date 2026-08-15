@@ -22,9 +22,14 @@ protocol accuracy, and a simple local installation remain constraints throughout
 
 ## Home automation
 
-- Direct Home Assistant integration, likely in Python.
-- Cross-language conformance tests driven by the shared JSON fixtures.
-- Entity and capability mapping based only on verified hardware behavior.
+- Direct Home Assistant custom-integration beta with UI setup, local polling,
+  climate controls, safe diagnostics, and custom-HACS/manual installation.
+- Cross-language conformance tests driven by captured and explicitly labeled
+  implementation-derived vectors in the shared JSON fixtures.
+- Next: wider physical compatibility testing and, if the client stabilizes,
+  extraction into a separately versioned Python package before any Core proposal.
+- Later entities for independently coexisting sleep, quiet, light, health, and
+  eco flags, only after their UX and physical behavior are sufficiently tested.
 
 ## Mobile experience
 

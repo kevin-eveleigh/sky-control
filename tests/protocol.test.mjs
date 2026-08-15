@@ -239,3 +239,21 @@ test("power-off frame matches the legacy iPad capture", () => {
     fixtures.expectedFrames.powerOff,
   );
 });
+
+test("all implementation-derived climate command vectors conform", () => {
+  const source = Buffer.from(
+    fixtures.frames[fixtures.derivedControlVectors.sourceFrame].hex,
+    "hex",
+  );
+  assert.match(
+    fixtures.derivedControlVectors.notice,
+    /not captured traffic.*not claims of physical verification/i,
+  );
+  for (const vector of fixtures.derivedControlVectors.vectors) {
+    assert.equal(
+      buildControlFrame(source, vector.request).toString("hex"),
+      vector.hex,
+      `${vector.request.action}=${vector.request.value}`,
+    );
+  }
+});

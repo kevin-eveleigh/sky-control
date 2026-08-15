@@ -40,3 +40,36 @@ jobs:
       - run: npm ci
       - run: npm ci --prefix desktop/tooling
       - run: npm run desktop:package
+
+  home-assistant:
+    name: Home Assistant 2026.8.2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+      - run: python -m pip install -e '.[dev]'
+      - run: ruff check custom_components tests/python support/*.py
+      - run: ruff format --check custom_components tests/python support/*.py
+      - run: mypy custom_components/sky_control
+      - run: pytest
+      - run: python support/validate-home-assistant.py
+
+  hassfest:
+    name: Hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    name: HACS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hacs/action@main
+        with:
+          category: integration
+          ignore: brands

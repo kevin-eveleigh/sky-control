@@ -1,0 +1,12 @@
+{
+  "domain": "sky_control",
+  "name": "Sky Control (SWM100)",
+  "codeowners": ["@kevin-eveleigh"],
+  "config_flow": true,
+  "documentation": "https://github.com/kevin-eveleigh/sky-control#home-assistant-beta",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/kevin-eveleigh/sky-control/issues",
+  "requirements": [],
+  "version": "0.3.0-beta.1"
+}

@@ -1,0 +1,47 @@
+{
+  "title": "Sky Control (SWM100)",
+  "config": {
+    "step": {
+      "user": {
+        "menu_options": {
+          "scan": "Scan for air conditioners",
+          "manual": "Enter an address manually"
+        }
+      },
+      "scan": {
+        "title": "Select an air conditioner",
+        "description": "Choose a locally discovered unit. Setup only reads its current status.",
+        "data": {
+          "device": "Air conditioner",
+          "friendly_name": "Name"
+        }
+      },
+      "manual": {
+        "title": "Connect to an air conditioner",
+        "description": "Enter the local network address of the unit. Setup only reads its current status.",
+        "data": {
+          "host": "Address",
+          "port": "Port",
+          "friendly_name": "Name"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the air conditioner. Check the address and that Home Assistant is on the same network.",
+      "invalid_response": "The device responded, but its status was not recognized as SWM100.",
+      "no_devices_found": "No compatible air conditioners were found. Try manual setup.",
+      "scan_failed": "The network scan could not start. Try manual setup."
+    },
+    "abort": {
+      "already_configured": "This air conditioner is already configured."
+    }
+  },
+  "exceptions": {
+    "communication_failed": {
+      "message": "Communication with the air conditioner failed."
+    },
+    "command_failed": {
+      "message": "The air conditioner did not confirm the command."
+    }
+  }
+}

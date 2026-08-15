@@ -1,63 +1,216 @@
-# Sky Control
+# Sky Control - Skyworth SWM100 Wi-Fi module community app
 
-Sky Control is an unofficial, local-first bridge and mobile-friendly controller
-for air conditioners that speak the Skyworth SWM100 local-network protocol. It
-exists because the legacy controller app is abandoned or unavailable for many
-owners while the appliance itself still works.
+Control your air conditioner from your phone or computer — even if the
+manufacturer's app has stopped working. Sky Control is a free, independent
+project that runs entirely on your own home network, with no account, cloud
+service, or subscription required. Targeted for units with a Skyworth SWM100 Wi-Fi module.
 
-The project is not affiliated with or endorsed by Skyworth, Tekno Point,
-Clima24, Easy Home, or any other manufacturer. Manufacturer and app names are
-used only to describe tested or possible compatibility.
+## What is Sky Control?
 
-> Public beta safety: Sky Control is designed for a trusted LAN or private VPN.
-> Never port-forward it or expose it directly to the public internet.
+Many air conditioners are controlled by a Wi-Fi module and a companion phone
+app. When that app is discontinued, removed from the app store, or simply
+stops working, the air conditioner's smart features stop working with it —
+even though the hardware is fine.
 
-## Screenshots
+Sky Control replaces that app with a simple web page you can open on any
+phone, tablet, or computer on your home network. It talks to the air
+conditioner directly, so nothing has to go through the internet or a
+manufacturer's servers.
 
-The same local controller adapts from a desktop dashboard to a phone-sized layout.
+The same page adapts from a full desktop dashboard to a phone-sized layout:
 
 <p align="center">
   <img src="output/playwright/sky-control-desktop.png" alt="Sky Control desktop dashboard" width="68%">
   <img src="output/playwright/sky-control-mobile.png" alt="Sky Control mobile dashboard" width="24%">
 </p>
 
-The macOS beta keeps bridge status and common lifecycle actions in the menu bar.
+On a Mac, an optional menu-bar app keeps things running quietly in the background:
 
 <p align="center">
   <img src="docs/assets/sky-control-menu-running.png" alt="Sky Control menu-bar app with the bridge running" width="42%">
   <img src="docs/assets/sky-control-menu-error.png" alt="Sky Control menu-bar app showing an isolated bridge error" width="42%">
 </p>
 
-### Abandoned legacy app
+## What can it do?
 
-If your former controller looked like this, the unit may belong to the same app
-or protocol family. Interface similarity is a useful lead, not confirmation of
-hardware compatibility.
+- Automatically find your air conditioner on your home Wi-Fi network.
+- Turn it on or off, change modes, and set the temperature, with live status.
+- Control more than one air conditioner, each with its own name.
+- Work from a phone, tablet, or computer browser — no app store needed.
+- Appear as a native climate device in Home Assistant, without the web bridge.
+- Optionally protect access with a password (an access token).
+- Generate a safe, shareable diagnostics report if something isn't working.
+
+Sky Control is still early (a public beta). It doesn't yet include a Windows
+version, native mobile apps, or automatic Wi-Fi setup for new devices. See
+[ROADMAP.md](ROADMAP.md) for what's planned.
+
+We can currently only find an air conditioner if you had the Wi-Fi set up on the unit before. Wi-Fi setup will be attempted in future releases.
+
+## Installing Sky Control
+
+Sky Control runs on a Mac that stays on your home network — a laptop, a
+Mac mini, or similar. There are two ways to run it:
+
+1. **Menu-bar app** — the easiest option. A small app sits in your Mac's menu
+   bar and manages everything for you.
+2. **Headless service** — for a Mac you leave running all the time as a
+   background service, with no window or menu-bar icon.
+
+### Easiest: ask an AI assistant to install it for you
+
+Honestly these days the installation guide is: copy this link and give it to an AI
+coding assistant, such as Claude, ChatGPT, or GitHub Copilot:
+
+```
+https://github.com/kevin-eveleigh/sky-control
+```
+
+Paste it in and ask something like *"Please install and set this up for me."*
+The project includes machine-readable setup instructions that let an
+assistant install the menu-bar app or the headless service, and walk you
+through the rest.
+
+### Installing it yourself
+
+Full step-by-step instructions for both options, including the exact
+commands, are further down in this document under
+[macOS installation modes](#macos-installation-modes).
+
+## Home Assistant beta
+
+Sky Control (SWM100) is also available as a direct Home Assistant custom
+integration. It talks from Home Assistant to the air conditioner over the LAN;
+the Sky Control web bridge, Mac app, Electron, and a separate desktop machine
+are not required.
+
+This is a beta custom integration. It is not part of Home Assistant Core and is
+not in the default HACS catalogue. Only one physical Tekno Point SKY unit is
+confirmed. Other Clima24, Easy Home AMS, Tekno Point Smart Controller, and
+SWM100-family units are still candidates until tested.
+
+<p align="center">
+  <img src="docs/assets/home-assistant-discovery.png" alt="Sky Control discovery in an isolated Home Assistant acceptance instance" width="48%">
+  <img src="docs/assets/home-assistant-climate.png" alt="Native Sky Control climate entity in Home Assistant" width="48%">
+</p>
+
+### Requirements
+
+- Home Assistant 2026.8.2 or newer.
+- For the HACS route only, HACS installed and authorized. If you do not have
+  HACS installed check the HACS docs: https://hacs.xyz/docs/use/ The manual
+  install below needs no HACS.
+- Home Assistant and the air conditioner on the same trusted LAN.
+- UDP broadcast/multicast for discovery, or the unit's hostname/address for
+  manual setup; control normally uses TCP port 1998.
+
+### Install with a custom HACS (Home Assistant Community Store) repository
+
+1. In HACS, open the menu and choose **Custom repositories**.
+2. Add `https://github.com/kevin-eveleigh/sky-control` with category
+   **Integration**.
+3. Find **Sky Control (SWM100)** in HACS and choose **Download**.
+4. Restart Home Assistant.
+5. Open **Settings → Devices & services → Add integration**, search for
+   **Sky Control (SWM100)**, then scan or configure the unit manually.
+
+Do not submit this beta to the default HACS catalogue. A future published
+release may provide a versioned HACS release; until then a custom repository
+installs the default branch.
+
+### Install manually
+
+Copy the entire `custom_components/sky_control` directory from this repository
+to `/config/custom_components/sky_control` in Home Assistant, restart Home
+Assistant, then add **Sky Control (SWM100)** from **Devices & services**. The
+package can be checked or archived locally with:
+
+```bash
+.venv/bin/python support/validate-home-assistant.py
+.venv/bin/python support/validate-home-assistant.py --archive
+```
+
+The optional archive is written under `dist/` and is not published anywhere.
+
+On macOS, copy the directory with the archive above or with
+`COPYFILE_DISABLE=1 tar …` rather than a plain `tar` or Finder drag. The source
+files carry extended attributes, so other methods add AppleDouble `._*`
+companion files next to every real file. Home Assistant ignores them, but they
+make the installed integration harder to inspect; delete them with
+`find /config/custom_components/sky_control -name '._*' -delete`.
+
+### Configure and use
+
+Setup is entirely in the Home Assistant UI. Choose a local scan and select a
+discovered unit, or enter its hostname/address and port manually. Setup performs
+one read-only status request and never sends a control command. Each unit gets a
+separate config entry and one native climate entity; multiple units are
+supported.
+
+Discovered MAC addresses provide the stable device identity and prevent
+duplicates. A manual unit without a reported MAC gets a random `manual-…`
+identity that remains stable for the life of its config entry. The mutable IP
+address is deliberately not used as a Home Assistant unique ID; duplicate
+manual endpoints are still rejected during setup.
+
+The climate entity supports power on/off; auto, cool, dry, fan-only, and heat;
+16–30°C targets in 1°C steps; all seven reported fan values (`auto`, gears 1–5,
+and `variable`); and off, vertical, horizontal, or combined swing. It shows the
+indoor and target temperature and becomes unavailable after communication
+failure, recovering automatically after a successful poll. Polling defaults to
+30 seconds.
+
+Sleep, quiet, display light, health, and eco can coexist, so this beta does not
+misrepresent them as climate presets. It adds no switch, select, sensor, button,
+custom service, or `hvac_action` entity behavior. Wi-Fi provisioning and remote
+access are also outside the integration; use Home Assistant's existing remote
+access.
+
+### Home Assistant diagnostics and removal
+
+Download diagnostics from the config entry's menu. They contain the integration
+version, SWM100 family label, availability, reported model/protocol values,
+supported capability mapping, and normalized last communication error. Network
+addresses, MAC/unique IDs, user and area names, raw packets, and private paths
+are redacted or never collected. Review diagnostics before sharing them.
+
+To remove a unit, open **Settings → Devices & services → Sky Control (SWM100)**
+and delete its config entry. To uninstall completely, remove the integration in
+HACS (or delete `/config/custom_components/sky_control` for a manual install)
+and restart Home Assistant.
+
+## Keeping it private and secure
+
+Sky Control has no cloud service and doesn't need the internet after you've
+installed it. It only works on your own local network — nothing about your
+air conditioner or how you use it is ever sent anywhere else.
+
+This also means anyone who can reach Sky Control on your network can see its
+status and send it commands, so it's meant to stay on a network you trust
+(and it's a good idea to turn on the optional token password). Don't set it up to
+be reachable from the public internet.
+
+To control your air conditioner while you're away from home, install Sky
+Control on a laptop or PC that stays at home, and use a private VPN — such as
+[WireGuard](https://www.wireguard.com/) or [Tailscale](https://tailscale.com/)
+— to connect your phone back into your home network. Once connected through
+the VPN, your phone can reach Sky Control exactly as if you were home. See
+[SECURITY.md](SECURITY.md) for more detail, and the
+[advanced remote-access notes](#advanced-remote-access-with-wireguard) below.
+
+## Is my air conditioner compatible?
+
+Sky Control speaks the Skyworth SWM100 local-network protocol. Compatibility
+depends on the physical hardware inside your unit, not just what the old
+control app looked like — a similar-looking app is a useful clue, but not
+confirmation.
+
+If your former controller app looked like this, your unit may belong to the
+same family, but that's a lead worth testing, not a guarantee:
 
 <p align="center">
   <img src="docs/assets/abandoned-app-screen.webp" alt="Abandoned legacy air-conditioner controller app" width="28%">
 </p>
-
-## What this beta provides
-
-- UDP discovery for SWM100-family modules.
-- TCP status reading and verified local controls.
-- Multiple named air conditioners.
-- A responsive web controller for desktop and phone.
-- Optional bearer-token authentication.
-- Sanitized diagnostics for compatibility reports.
-- A per-user macOS LaunchAgent installer.
-- An unsigned macOS menu-bar application for private beta testing.
-- Portable protocol fixtures and hardware-free tests.
-
-This foundation does not include the planned Windows tray application, direct
-Home Assistant integration, native mobile apps, cloud relay, Matter support, or
-Wi-Fi provisioning. See [ROADMAP.md](ROADMAP.md).
-
-## Compatibility
-
-Compatibility refers to physical hardware, not visual similarity between
-branded apps. A shared app design is a useful lead, never confirmation.
 
 ### Confirmed hardware
 
@@ -82,36 +235,27 @@ Please use the compatibility issue template for results. Do not upload vendor
 apps, proprietary binaries, tokens, IP addresses, MAC addresses, or raw private
 captures.
 
-## Architecture
+---
 
-The repository intentionally remains one small Next.js application:
+## Technical details and project info
 
-```text
-app/                    Web controller and local HTTP route handlers
-desktop/                Native menu shell and shared lifecycle supervision
-lib/airco/protocol.ts   Pure packet codec and CRC handling
-lib/airco/client.ts     TCP sessions and device communication
-lib/airco/discovery.ts  UDP discovery
-lib/bridge/             Validated bridge configuration
-lib/diagnostics.ts      Sanitized issue-report data
-fixtures/protocol/      Portable, identifier-free captured behavior
-support/                macOS service and protocol-research tools
-tests/                  Hardware-free automated tests
-```
+Everything below is for people installing or developing Sky Control by hand,
+contributing to the project, or building an AI assistant/agent workflow
+around it.
 
-The protocol codec never opens a socket. Automated tests cannot discover or
-control a physical air conditioner. The architecture decisions are recorded in
-[ADR 0001](docs/adr/0001-local-first-shared-protocol.md) and
-[ADR 0002](docs/adr/0002-electron-menu-bar-bridge.md).
+Sky Control is an unofficial, local-first project and is not affiliated with
+or endorsed by Skyworth, Tekno Point, Clima24, Easy Home, or any other
+manufacturer. Manufacturer and app names are used only to describe tested or
+possible compatibility.
 
-## Requirements
+### Requirements
 
 - The packaged menu-bar beta requires macOS. Its Electron runtime includes Node.js.
 - Source and headless installations require Node.js 22.13 or newer (Node 22 and 24 are validated in CI) and npm.
 - The bridge machine must be on the same local network as the unit.
 - For discovery, permission to use UDP broadcast/multicast on the LAN.
 
-## Install and run
+### Quick start from source
 
 ```bash
 # From the Sky Control source checkout:
@@ -129,14 +273,16 @@ A fresh install starts with no units. Select **Add airco**, scan the local
 network, or enter a hostname and port manually. Once configured, status and
 controls are available immediately.
 
-### Phone access and Add to Home Screen
+#### Phone access and Add to Home Screen
 
 Connect the phone to the same trusted Wi-Fi network and open the bridge's local
 URL. On iPhone or iPad, use Safari's Share menu and select **Add to Home Screen**.
 On Android, use the browser menu's **Add to Home screen** or **Install app**
 action. The bridge must remain running for the shortcut to work.
 
-## Configuration
+Pin the bridge computer's local IP in your router to make sure it always has the same IP address.
+
+### Configuration
 
 Copy `.env.example` to `.env.local`. Every local environment file and runtime
 state file is ignored by Git. For the menu-bar app, the optional file lives at
@@ -166,7 +312,7 @@ Paste it into `AIRCO_TOKEN` or use **Settings → Require an access token →
 Generate**. The UI stores its copy in that browser's local storage. Normal logs
 and diagnostic reports never include it.
 
-## Security model
+### Security model details
 
 Sky Control has no cloud service and does not need an internet connection after
 installation. It trusts the network boundary: without a token, anyone who can
@@ -177,17 +323,21 @@ Do not expose the bridge with router port forwarding, public reverse proxies,
 tunnels that create public URLs, or a public firewall rule. TLS termination,
 rate limiting, and internet-facing hardening are outside this milestone.
 
-### Advanced remote access with WireGuard
+> Public beta safety: Sky Control is designed for a trusted LAN or private VPN.
+> Never port-forward it or expose it directly to the public internet.
+
+#### Advanced remote access with WireGuard
 
 Run WireGuard on a router or another always-on host, connect the remote phone to
 that private VPN, and visit the bridge's VPN-reachable private address. Restrict
 the VPN peer to the LAN ranges and ports it needs, keep `AIRCO_TOKEN` enabled,
 and keep the bridge's HTTP port closed on the public WAN interface. WireGuard is
-not bundled or configured by this project.
+not bundled or configured by this project. Tailscale, which runs on top of
+WireGuard, works the same way and can be simpler to set up.
 
 See [SECURITY.md](SECURITY.md) for reporting and operational guidance.
 
-## Safe diagnostics
+### Safe diagnostics
 
 The **Activity → Download safe diagnostics** action creates JSON intended for a
 public issue. It contains exactly:
@@ -205,12 +355,12 @@ It does not contain access tokens, device IDs, user-assigned names or locations,
 IP addresses, MAC addresses, local paths, logs, state values, or full packet
 contents. Review any file before posting it publicly.
 
-## macOS installation modes
+### macOS installation modes
 
 Sky Control has three distinct installation modes. Run only one production
 bridge on a given address and port.
 
-### Menu-bar application (recommended private beta)
+#### Menu-bar application (recommended private beta)
 
 Build the unsigned local artifacts on a Mac with Node.js 22.13 or newer:
 
@@ -255,7 +405,7 @@ app cannot open, disable it in **System Settings → General → Login Items**. 
 the Application Support and Logs folders manually only after confirming their
 configuration is no longer needed.
 
-### Headless LaunchAgent (advanced)
+#### Headless LaunchAgent (advanced)
 
 The installer builds a standalone runtime and creates a per-user LaunchAgent.
 It does not require administrator access.
@@ -287,54 +437,59 @@ starts the managed bridge. To return to headless operation, first
 turn off Start at Login and quit the app, then run `npm run service:install`
 from a source checkout. Never run both modes on the same port.
 
-### Source/development mode
+#### Source/development mode
 
 Use `npm run dev` for web development and `npm run desktop:dev` for the native
 shell against a freshly built standalone runtime. Development mode requires the
 repository and Node.js and is not an installation method.
 
-## Troubleshooting
+### Troubleshooting
 
-### Discovery finds nothing
+#### Discovery finds nothing
 
 - Confirm the bridge and air conditioner are on the same non-guest LAN.
 - Check that client isolation is disabled for that Wi-Fi network.
 - Allow UDP broadcast/multicast ports 1990–1995 in the local firewall.
 - Add the unit manually using its DHCP reservation or `.local` hostname.
 
-### The unit is offline or status never arrives
+#### The unit is offline or status never arrives
 
 - Confirm the legacy app is closed while testing.
 - Check that TCP port 1998 is reachable inside the LAN.
 - Verify the device address has not changed; prefer a DHCP reservation.
 - Download safe diagnostics and open a compatibility issue.
 
-### Authentication fails
+For Home Assistant, also confirm its host or VM can reach the air conditioner's
+LAN and that the configured address has not changed. Reloading the config entry
+retries immediately; normal polling recovers automatically without recreating
+the entity.
+
+#### Authentication fails
 
 - Use the same token configured on the bridge; tokens are case-sensitive.
 - When `AIRCO_TOKEN` is set, the UI cannot replace or clear it.
 - Clear the browser's stored token and reconnect after changing the server token.
 
-### The menu says the headless service conflicts
+#### The menu says the headless service conflicts
 
 Another Sky Control LaunchAgent is installed or running on the configured port.
 Keep the headless service, or use the explicit migration action in the menu.
 Sky Control never stops or uninstalls it merely because the app was opened.
 
-### The menu says the port is already in use
+#### The menu says the port is already in use
 
 Another process owns the configured HTTP port. Stop that process or choose a
 different `SKY_CONTROL_PORT` in the Application Support `.env.local`, then try
 **Start Bridge** again. Details remain in the private per-user bridge log.
 
-### Unsigned beta will not open
+#### Unsigned beta will not open
 
 Confirm the artifact came from the expected local build, then use macOS's
 control-click → **Open** flow or Privacy & Security settings. A future release
 should use a Developer ID certificate, hardened runtime, notarization, and
 stapling; none of those are claimed for this beta.
 
-## Development and validation
+### Development and validation
 
 ```bash
 npm test       # hardware-free protocol/configuration regression tests
@@ -343,11 +498,61 @@ npm run build  # production build and TypeScript validation
 npm run desktop:check     # CI-safe desktop source/bundle validation
 npm run desktop:package   # macOS app + unsigned DMG/ZIP + validation
 npm run desktop:validate  # validate an already packaged app
+
+# Home Assistant / Python 3.14.2+
+python3.14 -m venv .venv
+.venv/bin/python -m pip install -e '.[dev]'
+.venv/bin/pytest
+.venv/bin/ruff check custom_components tests/python support/*.py
+.venv/bin/ruff format --check custom_components tests/python support/*.py
+.venv/bin/mypy custom_components/sky_control
+.venv/bin/python support/validate-home-assistant.py
 ```
 
 Next.js 16 uses Turbopack by default; this project opts into its documented
 Webpack build path because it is reliable in restricted local and CI
 environments. Development still uses the current Next.js dev server.
 
+Sky Control ships with portable, identifier-free protocol fixtures shared by
+TypeScript and Python. The codecs never open a socket. Python network tests use
+patched transports or a loopback-only simulator, so automated tests never
+broadcast and cannot discover or control a physical air conditioner.
+
 Contributions are welcome; read [CONTRIBUTING.md](CONTRIBUTING.md) before adding
 captures or protocol behavior. Sky Control is available under the [MIT License](LICENSE).
+
+### Architecture
+
+The repository keeps the web/desktop bridge and the direct Home Assistant
+integration together so both runtimes execute the same protocol fixtures:
+
+```text
+app/                    Web controller and local HTTP route handlers
+desktop/                Native menu shell and shared lifecycle supervision
+lib/airco/protocol.ts   Pure packet codec and CRC handling
+lib/airco/client.ts     TCP sessions and device communication
+lib/airco/discovery.ts  UDP discovery
+lib/bridge/             Validated bridge configuration
+lib/diagnostics.ts      Sanitized issue-report data
+fixtures/protocol/      Portable, identifier-free captured behavior
+custom_components/      Direct, HACS-compatible Home Assistant integration
+support/                Packaging, service, validation, and research tools
+tests/                  Node and Python hardware-free automated tests
+```
+
+The architecture decisions are recorded in
+[ADR 0001](docs/adr/0001-local-first-shared-protocol.md) and
+[ADR 0002](docs/adr/0002-electron-menu-bar-bridge.md), plus the Python boundary
+and conformance strategy in
+[ADR 0003](docs/adr/0003-home-assistant-python-conformance.md).
+
+### Notes for AI agents and assistants
+
+This repository includes [AGENTS.md](AGENTS.md), with instructions specific to
+coding agents working in this codebase (for example, project-specific Next.js
+conventions). If you are an AI assistant asked to install, run, or modify
+Sky Control, read `AGENTS.md` first, then follow the
+[macOS installation modes](#macos-installation-modes) section above for the
+exact commands to build the menu-bar app or the headless service. Prefer the
+menu-bar app for a user's personal Mac, and the headless service for a
+machine meant to run unattended.
