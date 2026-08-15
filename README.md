@@ -12,10 +12,12 @@ app. When that app is discontinued, removed from the app store, or simply
 stops working, the air conditioner's smart features stop working with it —
 even though the hardware is fine.
 
-Sky Control replaces that app with a simple web page you can open on any
-phone, tablet, or computer on your home network. It talks to the air
+Sky Control replaces that app with a small program — called the bridge —
+that runs on a Mac and hosts a simple web page. You open that page on any
+phone, tablet, or computer on your home network, and it talks to the air
 conditioner directly, so nothing has to go through the internet or a
-manufacturer's servers.
+manufacturer's servers. (There's also a way to skip the bridge entirely if
+you use Home Assistant — see the installing section below.)
 
 The same page adapts from a full desktop dashboard to a phone-sized layout:
 
@@ -41,46 +43,153 @@ On a Mac, an optional menu-bar app keeps things running quietly in the backgroun
 - Optionally protect access with a password (an access token).
 - Generate a safe, shareable diagnostics report if something isn't working.
 
+We can currently only find an air conditioner if you had the Wi-Fi set up on the unit before. Wi-Fi setup will be attempted in future releases.
+
 Sky Control is still early (a public beta). It doesn't yet include a Windows
 version, native mobile apps, or automatic Wi-Fi setup for new devices. See
 [ROADMAP.md](ROADMAP.md) for what's planned.
 
-We can currently only find an air conditioner if you had the Wi-Fi set up on the unit before. Wi-Fi setup will be attempted in future releases.
-
 ## Installing Sky Control
 
-Sky Control runs on a Mac that stays on your home network — a laptop, a
-Mac mini, or similar. There are two ways to run it:
+Sky Control currently runs three ways:
 
-1. **Menu-bar app** — the easiest option. A small app sits in your Mac's menu
-   bar and manages everything for you.
-2. **Headless service** — for a Mac you leave running all the time as a
-   background service, with no window or menu-bar icon.
+| Option | Runs on | Best if |
+| --- | --- | --- |
+| **Menu-bar app** | Your Mac | You want the simplest day-to-day experience, with status and controls right in the menu bar |
+| **Headless service** | Your Mac | You want it running quietly in the background all the time, e.g. on a Mac mini |
+| **Home Assistant integration** (beta) | Wherever Home Assistant runs — no Mac required | You already use Home Assistant and want a native climate entity |
 
-### Easiest: ask an AI assistant to install it for you
+There's no Windows version yet — the menu-bar app and headless service are the
+two ways to run the bridge, and both need a Mac. The Home Assistant
+integration is the one option that doesn't need a Mac at all: it skips the
+bridge and talks to the air conditioner directly from wherever Home Assistant
+already runs (Home Assistant OS, a Raspberry Pi, a NAS, and so on).
 
-Honestly these days the installation guide is: copy this link and give it to an AI
-coding assistant, such as Claude, ChatGPT, or GitHub Copilot:
+### Ask an AI assistant to install it (start here)
+
+For any of the three options, the easiest path is to copy this link and give
+it to an AI coding assistant, such as Claude, ChatGPT, or GitHub Copilot:
 
 ```
 https://github.com/kevin-eveleigh/sky-control
 ```
 
 Paste it in and ask something like *"Please install and set this up for me."*
-The project includes machine-readable setup instructions that let an
-assistant install the menu-bar app or the headless service, and walk you
-through the rest.
+Tell it which option you want, or describe your setup — a Mac you use every
+day, a Mac you leave running, or an existing Home Assistant instance — and
+let it choose. The project includes machine-readable setup instructions that
+let an assistant follow any of the three options below on its own.
 
-### Installing it yourself
+The rest of this section is the full manual instructions for each option —
+useful if you're installing it yourself, or want to check what an assistant
+did.
 
-Full step-by-step instructions for both options, including the exact
-commands, are further down in this document under
-[macOS installation modes](#macos-installation-modes).
+### Option 1: macOS menu-bar app
 
-## Home Assistant beta
+Best for most Mac users: a small app in the menu bar that starts the bridge
+for you and gives you status and controls without opening a browser.
 
-Sky Control (SWM100) is also available as a direct Home Assistant custom
-integration. It talks from Home Assistant to the air conditioner over the LAN;
+**Requirements:** macOS. Node.js 22.13 or newer only if you're building it
+yourself from source (an AI assistant, or a downloaded prebuilt release,
+doesn't need this on your end — the packaged app bundles its own Node.js
+runtime). The Mac must be on the same local network as the air conditioner,
+with permission to use UDP broadcast/multicast for discovery.
+
+Build the unsigned local artifacts on a Mac with Node.js 22.13 or newer:
+
+```bash
+npm ci
+npm ci --prefix desktop/tooling
+npm run desktop:package
+```
+
+The command creates `dist/mac-*/Sky Control.app`, a DMG, and a ZIP for the
+current Mac architecture, then validates that the app contains its bridge,
+static assets, menu-bar configuration, and licences. Open the DMG, drag **Sky
+Control** to Applications, and open it. The beta is not signed or notarized, so
+macOS may require a control-click → **Open** confirmation or approval in
+**System Settings → Privacy & Security**. Do not disable Gatekeeper globally.
+
+The app has no permanent Dock icon or main window. It starts its bundled bridge
+when opened and remains in the menu bar when the controller browser tab closes.
+Its menu provides bridge status, start, stop, restart, controller, copy-address,
+logs, Start at Login, About, and Quit actions. Each configured airco also gets a
+submenu with room and target readings, an explicit device-status refresh, a
+power toggle, mode choices, and target temperatures from 16–30°C. Opening the
+menu and its periodic menu refresh only read the local bridge cache; only
+**Refresh Device Status** contacts the airco, and controls are sent only after a
+deliberate menu selection. Start at Login is off by default and uses the macOS
+login-item setting; migration from an existing headless service offers to enable
+it explicitly.
+
+The packaged app does not require this source checkout or a separate Node.js
+installation. Runtime files are read from the app bundle. Writable files are:
+
+| Purpose | Location |
+| --- | --- |
+| Device configuration | `~/Library/Application Support/Sky Control/data/aircos.json` |
+| Access settings | `~/Library/Application Support/Sky Control/data/settings.json` |
+| Optional bridge environment | `~/Library/Application Support/Sky Control/.env.local` |
+| Menu-bar bridge log | `~/Library/Logs/Sky Control/bridge.log` |
+
+To uninstall, turn off **Start at Login**, choose **Quit**, and move Sky Control
+from Applications to the Trash. Configuration is deliberately retained. If the
+app cannot open, disable it in **System Settings → General → Login Items**. Remove
+the Application Support and Logs folders manually only after confirming their
+configuration is no longer needed.
+
+### Option 2: macOS headless service
+
+Best for a Mac you leave running all the time as a background server, with no
+window or menu-bar icon.
+
+**Requirements:** macOS and Node.js 22.13 or newer. No administrator access
+needed. The Mac must be on the same local network as the air conditioner,
+with permission to use UDP broadcast/multicast for discovery.
+
+The installer builds a standalone runtime and creates a per-user LaunchAgent:
+
+```bash
+npm run service:install
+npm run service:status
+npm run service:restart
+npm run service:uninstall
+```
+
+The runtime lives in `~/Library/Application Support/Sky Control`, and logs live
+in `~/Library/Logs`. The installer preserves existing state and migrates state
+from the earlier `Sky Local` path when present. `service:deploy` remains an alias
+for `service:install`.
+
+Uninstall removes the LaunchAgent but deliberately keeps runtime configuration
+for recovery. After confirming it is no longer needed, remove the printed
+runtime directory manually. Re-running `service:install` updates the copied
+runtime without modifying the source configuration first.
+
+The menu-bar app detects both the current and legacy LaunchAgent. It will not
+start another bridge when an installed or running agent is configured for the
+same port. Choose **Switch from Headless Service…** only when ready to migrate;
+after confirmation the app unloads the agent, retains its plist with a
+`.menu-bar-disabled` backup name (adding a numeric suffix rather than overwriting
+an earlier backup), keeps the shared data directory, enables Start at Login, and
+starts the managed bridge. To return to headless operation, first
+turn off Start at Login and quit the app, then run `npm run service:install`
+from a source checkout. Never run both modes (menu-bar and headless) on the
+same port — run only one production bridge per address and port.
+
+### Using it on your phone (Options 1 and 2)
+
+Connect the phone to the same trusted Wi-Fi network and open the bridge's local
+URL. On iPhone or iPad, use Safari's Share menu and select **Add to Home Screen**.
+On Android, use the browser menu's **Add to Home screen** or **Install app**
+action. The bridge must remain running for the shortcut to work.
+
+Pin the bridge computer's local IP in your router to make sure it always has the same IP address.
+
+### Option 3: Home Assistant integration (beta)
+
+Best if you already run Home Assistant and don't want a separate Mac running
+the bridge. It talks from Home Assistant to the air conditioner over the LAN;
 the Sky Control web bridge, Mac app, Electron, and a separate desktop machine
 are not required.
 
@@ -94,7 +203,7 @@ SWM100-family units are still candidates until tested.
   <img src="docs/assets/home-assistant-climate.png" alt="Native Sky Control climate entity in Home Assistant" width="48%">
 </p>
 
-### Requirements
+**Requirements:**
 
 - Home Assistant 2026.8.2 or newer.
 - For the HACS route only, HACS installed and authorized. If you do not have
@@ -104,7 +213,7 @@ SWM100-family units are still candidates until tested.
 - UDP broadcast/multicast for discovery, or the unit's hostname/address for
   manual setup; control normally uses TCP port 1998.
 
-### Install with a custom HACS (Home Assistant Community Store) repository
+#### Install with a custom HACS (Home Assistant Community Store) repository
 
 1. In HACS, open the menu and choose **Custom repositories**.
 2. Add `https://github.com/kevin-eveleigh/sky-control` with category
@@ -118,7 +227,7 @@ Do not submit this beta to the default HACS catalogue. A future published
 release may provide a versioned HACS release; until then a custom repository
 installs the default branch.
 
-### Install manually
+#### Install manually (could ask an AI assistant to do this for you)
 
 Copy the entire `custom_components/sky_control` directory from this repository
 to `/config/custom_components/sky_control` in Home Assistant, restart Home
@@ -139,7 +248,7 @@ companion files next to every real file. Home Assistant ignores them, but they
 make the installed integration harder to inspect; delete them with
 `find /config/custom_components/sky_control -name '._*' -delete`.
 
-### Configure and use
+#### Configure and use
 
 Setup is entirely in the Home Assistant UI. Choose a local scan and select a
 discovered unit, or enter its hostname/address and port manually. Setup performs
@@ -166,7 +275,7 @@ custom service, or `hvac_action` entity behavior. Wi-Fi provisioning and remote
 access are also outside the integration; use Home Assistant's existing remote
 access.
 
-### Home Assistant diagnostics and removal
+#### Home Assistant diagnostics and removal
 
 Download diagnostics from the config entry's menu. They contain the integration
 version, SWM100 family label, availability, reported model/protocol values,
@@ -248,14 +357,10 @@ or endorsed by Skyworth, Tekno Point, Clima24, Easy Home, or any other
 manufacturer. Manufacturer and app names are used only to describe tested or
 possible compatibility.
 
-### Requirements
+### Quick start from source (development mode)
 
-- The packaged menu-bar beta requires macOS. Its Electron runtime includes Node.js.
-- Source and headless installations require Node.js 22.13 or newer (Node 22 and 24 are validated in CI) and npm.
-- The bridge machine must be on the same local network as the unit.
-- For discovery, permission to use UDP broadcast/multicast on the LAN.
-
-### Quick start from source
+This is for developing the bridge itself, not one of the three install
+options above.
 
 ```bash
 # From the Sky Control source checkout:
@@ -273,14 +378,9 @@ A fresh install starts with no units. Select **Add airco**, scan the local
 network, or enter a hostname and port manually. Once configured, status and
 controls are available immediately.
 
-#### Phone access and Add to Home Screen
-
-Connect the phone to the same trusted Wi-Fi network and open the bridge's local
-URL. On iPhone or iPad, use Safari's Share menu and select **Add to Home Screen**.
-On Android, use the browser menu's **Add to Home screen** or **Install app**
-action. The bridge must remain running for the shortcut to work.
-
-Pin the bridge computer's local IP in your router to make sure it always has the same IP address.
+Use `npm run dev` for web development and `npm run desktop:dev` for the native
+shell against a freshly built standalone runtime. Development mode requires the
+repository and Node.js and is not an installation method.
 
 ### Configuration
 
@@ -354,94 +454,6 @@ public issue. It contains exactly:
 It does not contain access tokens, device IDs, user-assigned names or locations,
 IP addresses, MAC addresses, local paths, logs, state values, or full packet
 contents. Review any file before posting it publicly.
-
-### macOS installation modes
-
-Sky Control has three distinct installation modes. Run only one production
-bridge on a given address and port.
-
-#### Menu-bar application (recommended private beta)
-
-Build the unsigned local artifacts on a Mac with Node.js 22.13 or newer:
-
-```bash
-npm ci
-npm ci --prefix desktop/tooling
-npm run desktop:package
-```
-
-The command creates `dist/mac-*/Sky Control.app`, a DMG, and a ZIP for the
-current Mac architecture, then validates that the app contains its bridge,
-static assets, menu-bar configuration, and licences. Open the DMG, drag **Sky
-Control** to Applications, and open it. The beta is not signed or notarized, so
-macOS may require a control-click → **Open** confirmation or approval in
-**System Settings → Privacy & Security**. Do not disable Gatekeeper globally.
-
-The app has no permanent Dock icon or main window. It starts its bundled bridge
-when opened and remains in the menu bar when the controller browser tab closes.
-Its menu provides bridge status, start, stop, restart, controller, copy-address,
-logs, Start at Login, About, and Quit actions. Each configured airco also gets a
-submenu with room and target readings, an explicit device-status refresh, a
-power toggle, mode choices, and target temperatures from 16–30°C. Opening the
-menu and its periodic menu refresh only read the local bridge cache; only
-**Refresh Device Status** contacts the airco, and controls are sent only after a
-deliberate menu selection. Start at Login is off by default and uses the macOS
-login-item setting; migration from an existing headless service offers to enable
-it explicitly.
-
-The packaged app does not require this source checkout or a separate Node.js
-installation. Runtime files are read from the app bundle. Writable files are:
-
-| Purpose | Location |
-| --- | --- |
-| Device configuration | `~/Library/Application Support/Sky Control/data/aircos.json` |
-| Access settings | `~/Library/Application Support/Sky Control/data/settings.json` |
-| Optional bridge environment | `~/Library/Application Support/Sky Control/.env.local` |
-| Menu-bar bridge log | `~/Library/Logs/Sky Control/bridge.log` |
-
-To uninstall, turn off **Start at Login**, choose **Quit**, and move Sky Control
-from Applications to the Trash. Configuration is deliberately retained. If the
-app cannot open, disable it in **System Settings → General → Login Items**. Remove
-the Application Support and Logs folders manually only after confirming their
-configuration is no longer needed.
-
-#### Headless LaunchAgent (advanced)
-
-The installer builds a standalone runtime and creates a per-user LaunchAgent.
-It does not require administrator access.
-
-```bash
-npm run service:install
-npm run service:status
-npm run service:restart
-npm run service:uninstall
-```
-
-The runtime lives in `~/Library/Application Support/Sky Control`, and logs live
-in `~/Library/Logs`. The installer preserves existing state and migrates state
-from the earlier `Sky Local` path when present. `service:deploy` remains an alias
-for `service:install`.
-
-Uninstall removes the LaunchAgent but deliberately keeps runtime configuration
-for recovery. After confirming it is no longer needed, remove the printed
-runtime directory manually. Re-running `service:install` updates the copied
-runtime without modifying the source configuration first.
-
-The menu-bar app detects both the current and legacy LaunchAgent. It will not
-start another bridge when an installed or running agent is configured for the
-same port. Choose **Switch from Headless Service…** only when ready to migrate;
-after confirmation the app unloads the agent, retains its plist with a
-`.menu-bar-disabled` backup name (adding a numeric suffix rather than overwriting
-an earlier backup), keeps the shared data directory, enables Start at Login, and
-starts the managed bridge. To return to headless operation, first
-turn off Start at Login and quit the app, then run `npm run service:install`
-from a source checkout. Never run both modes on the same port.
-
-#### Source/development mode
-
-Use `npm run dev` for web development and `npm run desktop:dev` for the native
-shell against a freshly built standalone runtime. Development mode requires the
-repository and Node.js and is not an installation method.
 
 ### Troubleshooting
 
@@ -552,7 +564,8 @@ This repository includes [AGENTS.md](AGENTS.md), with instructions specific to
 coding agents working in this codebase (for example, project-specific Next.js
 conventions). If you are an AI assistant asked to install, run, or modify
 Sky Control, read `AGENTS.md` first, then follow the
-[macOS installation modes](#macos-installation-modes) section above for the
-exact commands to build the menu-bar app or the headless service. Prefer the
-menu-bar app for a user's personal Mac, and the headless service for a
-machine meant to run unattended.
+[Installing Sky Control](#installing-sky-control) section above for the exact
+commands for whichever option applies: the menu-bar app for a user's personal
+Mac, the headless service for a Mac meant to run unattended, or the Home
+Assistant integration when the user already runs Home Assistant and doesn't
+want a separate Mac process.
