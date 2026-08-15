@@ -1,6 +1,6 @@
 {
   "name": "sky-control",
-  "version": "0.2.0-beta.1",
+  "version": "0.3.0-beta.1",
   "description": "Local-first control for air conditioners using the Skyworth SWM100 protocol.",
   "author": "Sky Control contributors",
   "license": "MIT",
