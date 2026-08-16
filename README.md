@@ -5,6 +5,13 @@ manufacturer's app has stopped working. Sky Control is a free, independent
 project that runs entirely on your own home network, with no account, cloud
 service, or subscription required. Targeted for units with a Skyworth SWM100 Wi-Fi module.
 
+If your former controller app looked like this, your unit may belong to the
+same family, but that's a lead worth testing, not a guarantee:
+
+<p align="center">
+  <img src="docs/assets/abandoned-app-screen.webp" alt="Abandoned legacy air-conditioner controller app" width="28%">
+</p>
+
 ## What is Sky Control?
 
 Many air conditioners are controlled by a Wi-Fi module and a companion phone
@@ -29,8 +36,16 @@ The same page adapts from a full desktop dashboard to a phone-sized layout:
 On a Mac, an optional menu-bar app keeps things running quietly in the background:
 
 <p align="center">
-  <img src="docs/assets/sky-control-menu-running.png" alt="Sky Control menu-bar app with the bridge running" width="42%">
-  <img src="docs/assets/sky-control-menu-error.png" alt="Sky Control menu-bar app showing an isolated bridge error" width="42%">
+  <img src="docs/assets/sky-control-menu.png" alt="Sky Control menu-bar app with the bridge running and an air conditioner submenu open" width="58%">
+</p>
+
+If you already run Home Assistant, a beta integration skips the bridge and the
+Mac entirely: Home Assistant finds the unit on your network and controls it as
+a native climate device.
+
+<p align="center">
+  <img src="docs/assets/home-assistant-discovery.png" alt="Sky Control discovery in an isolated Home Assistant acceptance instance" width="48%">
+  <img src="docs/assets/home-assistant-climate.png" alt="Native Sky Control climate entity in Home Assistant" width="48%">
 </p>
 
 ## What can it do?
@@ -43,7 +58,9 @@ On a Mac, an optional menu-bar app keeps things running quietly in the backgroun
 - Optionally protect access with a password (an access token).
 - Generate a safe, shareable diagnostics report if something isn't working.
 
-We can currently only find an air conditioner if you had the Wi-Fi set up on the unit before. Wi-Fi setup will be attempted in future releases.
+> [!IMPORTANT]
+> **We can currently only find an air conditioner if you had the Wi-Fi set up
+> on the unit before.** Wi-Fi setup will be attempted in future releases.
 
 Sky Control is still early (a public beta). It doesn't yet include a Windows
 version, native mobile apps, or automatic Wi-Fi setup for new devices. See
@@ -198,11 +215,6 @@ not in the default HACS catalogue. Only one physical Tekno Point SKY unit is
 confirmed. Other Clima24, Easy Home AMS, Tekno Point Smart Controller, and
 SWM100-family units are still candidates until tested.
 
-<p align="center">
-  <img src="docs/assets/home-assistant-discovery.png" alt="Sky Control discovery in an isolated Home Assistant acceptance instance" width="48%">
-  <img src="docs/assets/home-assistant-climate.png" alt="Native Sky Control climate entity in Home Assistant" width="48%">
-</p>
-
 **Requirements:**
 
 - Home Assistant 2026.8.2 or newer.
@@ -312,14 +324,8 @@ the VPN, your phone can reach Sky Control exactly as if you were home. See
 Sky Control speaks the Skyworth SWM100 local-network protocol. Compatibility
 depends on the physical hardware inside your unit, not just what the old
 control app looked like — a similar-looking app is a useful clue, but not
-confirmation.
-
-If your former controller app looked like this, your unit may belong to the
-same family, but that's a lead worth testing, not a guarantee:
-
-<p align="center">
-  <img src="docs/assets/abandoned-app-screen.webp" alt="Abandoned legacy air-conditioner controller app" width="28%">
-</p>
+confirmation. The [screenshot at the top of this page](#sky-control---skyworth-swm100-wi-fi-module-community-app)
+shows the kind of abandoned controller app that suggests a unit in this family.
 
 ### Confirmed hardware
 
@@ -557,6 +563,15 @@ The architecture decisions are recorded in
 [ADR 0002](docs/adr/0002-electron-menu-bar-bridge.md), plus the Python boundary
 and conformance strategy in
 [ADR 0003](docs/adr/0003-home-assistant-python-conformance.md).
+
+### Credits
+
+Snow Snowflake Winter SVG Vector icon by
+[Ruslan Mullakaev](https://dribbble.com/ruslan_design?ref=svgrepo.com) in CC
+Attribution License via [SVG Repo](https://www.svgrepo.com/). It is the basis
+for the app icon, the menu-bar tray icon, and the web favicon. The same notice
+is repeated in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), which ships
+with the desktop build.
 
 ### Notes for AI agents and assistants
 

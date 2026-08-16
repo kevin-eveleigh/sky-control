@@ -10,6 +10,18 @@ file stays identical whichever machine produced the build.
 Electron additionally ships its Chromium and Node.js notices inside the app
 bundle as `LICENSES.chromium.html` and related runtime licence files.
 
+## Icon artwork
+
+Declared license: CC Attribution
+
+```text
+Snow Snowflake Winter SVG Vector icon by Ruslan Mullakaev
+(https://dribbble.com/ruslan_design) in CC Attribution License
+via SVG Repo (https://www.svgrepo.com/).
+
+Used for the Sky Control app icon, menu-bar tray icon, and favicon.
+```
+
 ## @img/colour 1.1.0
 
 Declared license: MIT

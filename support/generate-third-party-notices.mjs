@@ -186,6 +186,20 @@ const body = [
   "Electron additionally ships its Chromium and Node.js notices inside the app",
   "bundle as `LICENSES.chromium.html` and related runtime licence files.",
   "",
+  // The icon artwork is not an npm package, so it cannot be traced from the bundle. It is
+  // listed here by hand because the app, tray, and favicon assets built from it do ship.
+  "## Icon artwork",
+  "",
+  "Declared license: CC Attribution",
+  "",
+  "```text",
+  "Snow Snowflake Winter SVG Vector icon by Ruslan Mullakaev",
+  "(https://dribbble.com/ruslan_design) in CC Attribution License",
+  "via SVG Repo (https://www.svgrepo.com/).",
+  "",
+  "Used for the Sky Control app icon, menu-bar tray icon, and favicon.",
+  "```",
+  "",
   ...notices.flatMap((notice) => [
     `## ${notice.name} ${notice.version}`,
     "",
