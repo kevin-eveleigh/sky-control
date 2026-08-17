@@ -5,8 +5,15 @@ and releases will use Semantic Versioning once published.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-08-17
+
 ### Fixed
 
+- The menu-bar app now survives system sleep: monitoring pauses on suspend,
+  health failures are ignored for a grace period after a wake, and a bridge that
+  died while the Mac slept is restarted on resume.
+- An unresponsive bridge is now restarted automatically, up to three attempts,
+  instead of parking in an error state until someone clicks Restart Bridge.
 - Unconfirmed native-menu commands now remain visible in the airco status line
   instead of looking like a silent success.
 - Native menu updates are deferred while the menu is open, preventing periodic
@@ -27,6 +34,9 @@ and releases will use Semantic Versioning once published.
   explicitly distinguishing captures from implementation-derived packets.
 - Python 3.14 / Home Assistant 2026.8.2 lint, type, test, coverage, package,
   Hassfest, and HACS validation workflows plus a local installation archive.
+- Optional "Keep Mac Awake While Running" menu setting that blocks App Nap and
+  idle system sleep while the bridge runs, without keeping the display on. The
+  choice is remembered between launches and is off by default.
 - Native per-airco menu controls for explicit status refresh, power, mode, and
   16–30°C target temperature, with room and target readings in the menu.
 - Unsigned macOS menu-bar beta with native lifecycle, status, controller, logs,

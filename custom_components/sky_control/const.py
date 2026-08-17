@@ -4,7 +4,7 @@ from datetime import timedelta
 
 DOMAIN = "sky_control"
 INTEGRATION_NAME = "Sky Control (SWM100)"
-INTEGRATION_VERSION = "0.3.0-beta.1"
+INTEGRATION_VERSION = "0.3.1"
 PROTOCOL_FAMILY = "Skyworth SWM100"
 DEFAULT_NAME = "Sky Control AC"
 DEFAULT_PORT = 1998

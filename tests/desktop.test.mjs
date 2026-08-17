@@ -22,6 +22,9 @@ import {
   inspectLaunchAgents,
   launchAgentDefinitions,
 } from "../desktop/core/launch-agent.mjs";
+import { createPowerSaveController } from "../desktop/core/power-save.mjs";
+import { loadPreferences, savePreferences } from "../desktop/core/preferences.mjs";
+import { createSleepGapDetector } from "../desktop/core/sleep-gap.mjs";
 import { BridgeSupervisor } from "../desktop/core/supervisor.mjs";
 
 const cleanup = new Set();
@@ -334,6 +337,161 @@ test("desktop bridge reports an unexpected child-process exit without restarting
   assert.equal(lifecycle.supervisor.snapshot().status, "error");
   assert.equal(lifecycle.supervisor.snapshot().error.code, "UNEXPECTED_EXIT");
   assert.equal(lifecycle.starts, 1);
+});
+
+test("sleep gap detector ignores ordinary ticks and reports wake-up jumps", () => {
+  let clock = 1_000_000;
+  const detector = createSleepGapDetector({ intervalMs: 2_000, now: () => clock });
+
+  clock += 2_100;
+  assert.equal(detector.tick(), 0);
+  clock += 4_900;
+  assert.equal(detector.tick(), 0, "coalesced timers stay below the five-second floor");
+  clock += 6_000;
+  assert.equal(detector.tick(), 6_000);
+  clock += 90 * 60_000;
+  assert.equal(detector.tick(), 90 * 60_000);
+  clock += 2_000;
+  assert.equal(detector.tick(), 0);
+});
+
+test("desktop bridge tolerates health failures immediately after a wake", async () => {
+  const configuration = await testConfiguration();
+  let healthy = true;
+  const lifecycle = makeSupervisor(configuration, {
+    monitorInterval: 60_000,
+    healthCheck: async () => healthy,
+  });
+  await lifecycle.supervisor.start();
+
+  healthy = false;
+  await lifecycle.supervisor.resumeMonitoring({ graceMs: 15_000 });
+  for (let index = 0; index < 5; index += 1) await lifecycle.supervisor.checkHealthOnce();
+
+  assert.equal(lifecycle.supervisor.snapshot().status, "running");
+  assert.equal(lifecycle.starts, 1);
+});
+
+test("desktop bridge restarts itself once a wake grace period expires", async () => {
+  const configuration = await testConfiguration();
+  let clock = 1_000_000;
+  let failures = 0;
+  const lifecycle = makeSupervisor(configuration, {
+    monitorInterval: 60_000,
+    recoveryDelay: 0,
+    now: () => clock,
+    healthCheck: async () => {
+      if (failures === 0) return true;
+      failures -= 1;
+      return false;
+    },
+  });
+  await lifecycle.supervisor.start();
+
+  // One failure is spent inside the grace window, three after it; the restart
+  // that follows then finds a healthy bridge.
+  failures = 4;
+  await lifecycle.supervisor.resumeMonitoring({ graceMs: 15_000 });
+  clock += 20_000;
+  for (let index = 0; index < 2; index += 1) await lifecycle.supervisor.checkHealthOnce();
+  assert.equal(lifecycle.starts, 1, "two failures are not enough to restart");
+
+  await lifecycle.supervisor.checkHealthOnce();
+  assert.equal(lifecycle.starts, 2);
+  assert.equal(lifecycle.supervisor.snapshot().status, "running");
+});
+
+test("desktop bridge reports an unhealthy bridge once recovery is exhausted", async () => {
+  const configuration = await testConfiguration();
+  let healthy = true;
+  const lifecycle = makeSupervisor(configuration, {
+    monitorInterval: 60_000,
+    recoveryLimit: 0,
+    healthCheck: async () => healthy,
+  });
+  await lifecycle.supervisor.start();
+
+  healthy = false;
+  for (let index = 0; index < 3; index += 1) await lifecycle.supervisor.checkHealthOnce();
+
+  assert.equal(lifecycle.supervisor.snapshot().status, "error");
+  assert.equal(lifecycle.supervisor.snapshot().error.code, "UNHEALTHY");
+  assert.equal(lifecycle.starts, 1);
+});
+
+test("desktop bridge that died while asleep is restarted on resume", async () => {
+  const configuration = await testConfiguration();
+  const lifecycle = makeSupervisor(configuration);
+  await lifecycle.supervisor.start();
+
+  lifecycle.supervisor.pauseMonitoring();
+  lifecycle.children[0].emit("exit", 1);
+  assert.equal(lifecycle.supervisor.snapshot().status, "error");
+
+  await lifecycle.supervisor.resumeMonitoring();
+  assert.equal(lifecycle.starts, 2);
+  assert.equal(lifecycle.supervisor.snapshot().status, "running");
+});
+
+test("desktop bridge stopped by the user stays stopped across a resume", async () => {
+  const configuration = await testConfiguration();
+  const lifecycle = makeSupervisor(configuration);
+  await lifecycle.supervisor.start();
+  await lifecycle.supervisor.stop();
+
+  lifecycle.supervisor.pauseMonitoring();
+  await lifecycle.supervisor.resumeMonitoring();
+
+  assert.equal(lifecycle.starts, 1);
+  assert.equal(lifecycle.supervisor.snapshot().status, "stopped");
+});
+
+test("sleep prevention is held only while the bridge runs", async () => {
+  const started = [];
+  const stopped = [];
+  let nextId = 1;
+  const powerSaveBlocker = {
+    start(type) {
+      started.push(type);
+      return nextId++;
+    },
+    stop(id) {
+      stopped.push(id);
+    },
+    isStarted: (id) => started.length > 0 && !stopped.includes(id),
+  };
+  const controller = createPowerSaveController({ powerSaveBlocker, preferred: false });
+
+  assert.equal(controller.apply(true), false);
+  assert.equal(started.length, 0);
+
+  controller.setPreferred(true);
+  assert.equal(controller.apply(false), false);
+  assert.equal(started.length, 0);
+
+  assert.equal(controller.apply(true), true);
+  assert.deepEqual(started, ["prevent-app-suspension"]);
+  assert.equal(controller.apply(true), true);
+  assert.equal(started.length, 1, "the assertion is not taken twice");
+
+  assert.equal(controller.apply(false), false);
+  assert.deepEqual(stopped, [1]);
+  assert.equal(controller.release(), false);
+});
+
+test("desktop preferences round-trip and fall back to safe defaults", async () => {
+  const root = await temporaryDirectory();
+
+  assert.deepEqual(await loadPreferences(root), { preventSleep: false });
+
+  await savePreferences(root, { preventSleep: true });
+  assert.deepEqual(await loadPreferences(root), { preventSleep: true });
+
+  await writeFile(path.join(root, "preferences.json"), "{not json");
+  assert.deepEqual(await loadPreferences(root), { preventSleep: false });
+
+  await savePreferences(root, { preventSleep: "yes" });
+  assert.deepEqual(await loadPreferences(root), { preventSleep: false });
 });
 
 test("desktop bridge reports a port conflict without launching a process", async () => {

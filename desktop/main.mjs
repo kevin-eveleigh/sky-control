@@ -8,6 +8,8 @@ import {
   dialog,
   Menu,
   nativeImage,
+  powerMonitor,
+  powerSaveBlocker,
   shell,
   Tray,
   utilityProcess,
@@ -16,6 +18,9 @@ import {
   loadDesktopConfiguration,
   preserveConfiguration,
 } from "./core/configuration.mjs";
+import { loadPreferences, savePreferences } from "./core/preferences.mjs";
+import { createPowerSaveController } from "./core/power-save.mjs";
+import { createSleepGapDetector } from "./core/sleep-gap.mjs";
 import { buildAircoMenuItems, recordAircoActionResult } from "./core/airco-menu.mjs";
 import { BridgeApi } from "./core/bridge-api.mjs";
 import { MenuRebuildGate } from "./core/menu-rebuild-gate.mjs";
@@ -30,6 +35,9 @@ import { createElectronBridgeLauncher } from "./electron-launcher.mjs";
 
 const APP_NAME = "Sky Control";
 const APP_VERSION = app.getVersion();
+const AIRCO_REFRESH_INTERVAL = 15_000;
+/** States where sleeping would interrupt work in progress, not just idling. */
+const SLEEP_SENSITIVE_STATES = new Set(["starting", "running", "recovering"]);
 const isDesktopTest = !app.isPackaged && process.env.SKY_CONTROL_DESKTOP_TEST_MODE === "1";
 
 app.setName(APP_NAME);
@@ -63,9 +71,11 @@ let aircoSnapshot = null;
 let aircoLoading = false;
 let aircoLoadError = false;
 let aircoRefreshTimer = null;
+let powerSave = null;
 const busyAircos = new Set();
 const aircoNotices = new Map();
 const menuRebuildGate = new MenuRebuildGate();
+const aircoSleepGap = createSleepGapDetector({ intervalMs: AIRCO_REFRESH_INTERVAL });
 
 function supportPaths() {
   const override = isDesktopTest ? process.env.SKY_CONTROL_APP_SUPPORT_PATH : null;
@@ -120,6 +130,38 @@ async function setLoginItem(enabled) {
     await showError("Startup setting was not changed", "Change Sky Control in System Settings → General → Login Items.");
   }
   rebuildMenu();
+}
+
+async function setPreventSleep(enabled) {
+  powerSave.setPreferred(enabled);
+  powerSave.apply(SLEEP_SENSITIVE_STATES.has(supervisor?.snapshot().status));
+  rebuildMenu();
+  try {
+    await savePreferences(configuration.appSupportPath, { preventSleep: enabled });
+  } catch (error) {
+    logger?.error(`PREFERENCES_SAVE_FAILED: ${error?.code || error?.message || "unknown"}.`);
+    await showError(
+      "The sleep setting could not be saved.",
+      "It stays in effect until Sky Control quits.",
+    );
+  }
+}
+
+/** Lock stops nothing, so it only warrants a refresh; sleep freezes the bridge
+ *  and its sockets, so the supervisor needs telling on both edges. */
+function registerPowerHandlers() {
+  powerMonitor.on("suspend", () => {
+    logger?.info("System suspending; pausing bridge monitoring.");
+    supervisor?.pauseMonitoring();
+  });
+  powerMonitor.on("resume", () => {
+    logger?.info("System resumed; re-checking the bridge.");
+    aircoSnapshot = null;
+    aircoSleepGap.reset();
+    rebuildMenu();
+    void supervisor?.resumeMonitoring().then(() => refreshAircoList());
+  });
+  powerMonitor.on("unlock-screen", () => void refreshAircoList());
 }
 
 async function showError(message, detail = "Open Logs for more detail.") {
@@ -194,9 +236,18 @@ async function runAircoAction(aircoId, action) {
 
 function handleSupervisorState() {
   const state = supervisor.snapshot();
+  powerSave?.apply(SLEEP_SENSITIVE_STATES.has(state.status));
   if (state.status === "running") {
     if (!aircoRefreshTimer) {
-      aircoRefreshTimer = setInterval(() => void refreshAircoList(), 15_000);
+      aircoSleepGap.reset();
+      aircoRefreshTimer = setInterval(() => {
+        if (aircoSleepGap.tick()) {
+          // Readings taken before the Mac slept are not evidence of anything now.
+          aircoSnapshot = null;
+          rebuildMenu();
+        }
+        void refreshAircoList();
+      }, AIRCO_REFRESH_INTERVAL);
       void refreshAircoList();
     }
   } else {
@@ -302,6 +353,16 @@ function buildMenu() {
       },
     },
     { type: "separator" },
+    ...(process.platform === "darwin"
+      ? [
+          {
+            label: "Keep Mac Awake While Running",
+            type: "checkbox",
+            checked: Boolean(powerSave?.preferred),
+            click: (item) => void setPreventSleep(item.checked),
+          },
+        ]
+      : []),
     {
       label: packagedLoginItem ? "Start at Login" : "Start at Login (packaged app only)",
       type: "checkbox",
@@ -371,6 +432,13 @@ async function initialize() {
   });
   bridgeApi = new BridgeApi({ configuration });
 
+  const preferences = await loadPreferences(configuration.appSupportPath);
+  powerSave = createPowerSaveController({
+    powerSaveBlocker,
+    logger,
+    preferred: preferences.preventSleep,
+  });
+
   const icon = nativeImage.createFromPath(
     app.isPackaged
       ? path.join(process.resourcesPath, "desktop-assets", "trayTemplate.png")
@@ -394,6 +462,7 @@ async function initialize() {
     logger,
   });
   supervisor.on("state", handleSupervisorState);
+  registerPowerHandlers();
   rebuildMenu();
   await supervisor.start();
 }
@@ -402,6 +471,7 @@ app.on("before-quit", (event) => {
   if (quitting) return;
   event.preventDefault();
   quitting = true;
+  powerSave?.release();
   Promise.resolve(supervisor?.stop())
     .then(() => logger?.flush())
     .finally(() => app.exit(0));

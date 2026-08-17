@@ -1,9 +1,15 @@
 import { EventEmitter } from "node:events";
 import { createServer, connect } from "node:net";
 import http from "node:http";
+import { createSleepGapDetector } from "./sleep-gap.mjs";
 
 const DEFAULT_READY_TIMEOUT = 20_000;
 const DEFAULT_STOP_TIMEOUT = 10_000;
+const DEFAULT_RESUME_GRACE = 15_000;
+const DEFAULT_RECOVERY_LIMIT = 3;
+const DEFAULT_RECOVERY_DELAY = 5_000;
+const DEFAULT_HEALTHY_RESET = 60_000;
+const UNHEALTHY_THRESHOLD = 3;
 
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -82,6 +88,11 @@ export class BridgeSupervisor extends EventEmitter {
     stopTimeout = DEFAULT_STOP_TIMEOUT,
     pollInterval = 300,
     monitorInterval = 2_000,
+    resumeGrace = DEFAULT_RESUME_GRACE,
+    recoveryLimit = DEFAULT_RECOVERY_LIMIT,
+    recoveryDelay = DEFAULT_RECOVERY_DELAY,
+    healthyResetAfter = DEFAULT_HEALTHY_RESET,
+    now = () => Date.now(),
     logger = { info() {}, error() {} },
   }) {
     super();
@@ -95,12 +106,23 @@ export class BridgeSupervisor extends EventEmitter {
     this.stopTimeout = stopTimeout;
     this.pollInterval = pollInterval;
     this.monitorInterval = monitorInterval;
+    this.resumeGrace = resumeGrace;
+    this.recoveryLimit = recoveryLimit;
+    this.recoveryDelay = recoveryDelay;
+    this.healthyResetAfter = healthyResetAfter;
+    this.now = now;
     this.logger = logger;
     this.child = null;
     this.expectedExit = false;
     this.operation = null;
     this.monitorTimer = null;
     this.failedHealthChecks = 0;
+    this.suspended = false;
+    this.recovering = false;
+    this.recoveryAttempts = 0;
+    this.graceUntil = 0;
+    this.healthySince = 0;
+    this.sleepGap = createSleepGapDetector({ intervalMs: monitorInterval, now });
     this.current = { status: "stopped", error: null };
   }
 
@@ -111,7 +133,7 @@ export class BridgeSupervisor extends EventEmitter {
       host: this.configuration.bindHost,
       port: this.configuration.bindPort,
       hasProcess: Boolean(this.child),
-      busy: Boolean(this.operation),
+      busy: Boolean(this.operation) || this.recovering,
     };
   }
 
@@ -123,6 +145,7 @@ export class BridgeSupervisor extends EventEmitter {
   async start() {
     if (this.operation === "start" || this.child) return { started: false, ...this.snapshot() };
     this.operation = "start";
+    this.suspended = false;
     this.setState("starting");
     try {
       const conflicts = await this.conflictCheck();
@@ -150,7 +173,8 @@ export class BridgeSupervisor extends EventEmitter {
       const deadline = Date.now() + this.readyTimeout;
       while (this.child === child && Date.now() < deadline) {
         if (await this.healthCheck(this.configuration.controllerUrl)) {
-          this.failedHealthChecks = 0;
+          this.resetHealthTracking();
+          this.healthySince = this.now();
           this.setState("running");
           this.startMonitoring();
           return { started: true, ...this.snapshot() };
@@ -176,6 +200,7 @@ export class BridgeSupervisor extends EventEmitter {
     if (this.operation === "stop") return { stopped: false, ...this.snapshot() };
     this.operation = "stop";
     this.stopMonitoring();
+    this.resetHealthTracking();
     try {
       const child = this.child;
       if (child) {
@@ -244,21 +269,9 @@ export class BridgeSupervisor extends EventEmitter {
 
   startMonitoring() {
     this.stopMonitoring();
-    this.monitorTimer = setInterval(async () => {
-      if (!this.child) return;
-      const healthy = await this.healthCheck(this.configuration.controllerUrl);
-      if (healthy) {
-        this.failedHealthChecks = 0;
-        if (this.current.status !== "running") this.setState("running");
-        return;
-      }
-      this.failedHealthChecks += 1;
-      if (this.failedHealthChecks >= 3 && this.current.status !== "error") {
-        const error = new BridgeLifecycleError("UNHEALTHY", "The bridge is not responding.");
-        this.logger.error(`${error.code}: ${error.message}`);
-        this.setState("error", error);
-      }
-    }, this.monitorInterval);
+    if (this.suspended) return;
+    this.sleepGap.reset();
+    this.monitorTimer = setInterval(() => void this.monitorTick(), this.monitorInterval);
     this.monitorTimer.unref?.();
   }
 
@@ -266,6 +279,102 @@ export class BridgeSupervisor extends EventEmitter {
     if (this.monitorTimer) clearInterval(this.monitorTimer);
     this.monitorTimer = null;
     this.failedHealthChecks = 0;
+  }
+
+  resetHealthTracking() {
+    this.failedHealthChecks = 0;
+    this.graceUntil = 0;
+    this.healthySince = 0;
+    if (!this.recovering) this.recoveryAttempts = 0;
+  }
+
+  /** Suppresses health failures for a while: straight after a wake the bridge
+   *  is fine but its sockets and timers are not, so the first checks lie. */
+  noteResume(graceMs = this.resumeGrace) {
+    this.failedHealthChecks = 0;
+    this.healthySince = 0;
+    this.graceUntil = this.now() + graceMs;
+    this.sleepGap.reset();
+  }
+
+  pauseMonitoring() {
+    this.suspended = true;
+    this.stopMonitoring();
+  }
+
+  /** Call on wake. A bridge that died while the Mac slept is restarted; one the
+   *  user stopped on purpose stays stopped. */
+  async resumeMonitoring({ graceMs = this.resumeGrace } = {}) {
+    this.suspended = false;
+    this.noteResume(graceMs);
+    if (!this.child) {
+      if (this.current.status === "error" && !this.operation) await this.start();
+      return this.snapshot();
+    }
+    this.startMonitoring();
+    await this.checkHealthOnce();
+    return this.snapshot();
+  }
+
+  async monitorTick() {
+    const gap = this.sleepGap.tick();
+    if (gap) {
+      this.logger.info(`Monitoring resumed after a ${Math.round(gap / 1_000)}s gap; the Mac slept.`);
+      this.noteResume();
+    }
+    await this.checkHealthOnce();
+  }
+
+  async checkHealthOnce() {
+    if (!this.child || this.operation || this.recovering) return;
+    const child = this.child;
+    const healthy = await this.healthCheck(this.configuration.controllerUrl);
+    if (this.child !== child || this.operation || this.recovering) return;
+
+    if (healthy) {
+      this.failedHealthChecks = 0;
+      this.graceUntil = 0;
+      if (!this.healthySince) this.healthySince = this.now();
+      if (this.now() - this.healthySince >= this.healthyResetAfter) this.recoveryAttempts = 0;
+      if (this.current.status !== "running") this.setState("running");
+      return;
+    }
+
+    this.healthySince = 0;
+    if (this.now() < this.graceUntil) return;
+    this.failedHealthChecks += 1;
+    if (this.failedHealthChecks < UNHEALTHY_THRESHOLD) return;
+    await this.recoverUnhealthy();
+  }
+
+  /** An unresponsive bridge used to park in "error" until someone clicked
+   *  Restart. Restart it instead, and only give up after a few attempts. */
+  async recoverUnhealthy() {
+    const error = new BridgeLifecycleError("UNHEALTHY", "The bridge is not responding.");
+    if (this.recoveryAttempts >= this.recoveryLimit) {
+      if (this.current.status !== "error") {
+        this.logger.error(`${error.code}: giving up after ${this.recoveryAttempts} restart attempts.`);
+        this.setState("error", error);
+      }
+      return;
+    }
+
+    this.recovering = true;
+    this.recoveryAttempts += 1;
+    this.stopMonitoring();
+    this.logger.error(
+      `${error.code}: restarting the bridge (attempt ${this.recoveryAttempts} of ${this.recoveryLimit}).`,
+    );
+    this.setState("recovering", error);
+    try {
+      if (this.recoveryDelay > 0) await delay(this.recoveryDelay);
+      await this.restart();
+    } catch (cause) {
+      this.logger.error(`RECOVERY_FAILED: ${cause?.code || cause?.message || "unknown"}.`);
+    } finally {
+      this.recovering = false;
+      this.emit("state", this.snapshot());
+    }
   }
 
   toLifecycleError(error, fallbackCode = "START_FAILED", fallbackMessage = "The bridge could not start.") {

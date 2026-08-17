@@ -130,14 +130,18 @@ macOS may require a control-click → **Open** confirmation or approval in
 The app has no permanent Dock icon or main window. It starts its bundled bridge
 when opened and remains in the menu bar when the controller browser tab closes.
 Its menu provides bridge status, start, stop, restart, controller, copy-address,
-logs, Start at Login, About, and Quit actions. Each configured airco also gets a
-submenu with room and target readings, an explicit device-status refresh, a
-power toggle, mode choices, and target temperatures from 16–30°C. Opening the
-menu and its periodic menu refresh only read the local bridge cache; only
-**Refresh Device Status** contacts the airco, and controls are sent only after a
-deliberate menu selection. Start at Login is off by default and uses the macOS
-login-item setting; migration from an existing headless service offers to enable
-it explicitly.
+logs, Keep Mac Awake While Running, Start at Login, About, and Quit actions.
+Each configured airco also gets a submenu with room and target readings, an
+explicit device-status refresh, a power toggle, mode choices, and target
+temperatures from 16–30°C. Opening the menu and its periodic menu refresh only
+read the local bridge cache; only **Refresh Device Status** contacts the airco,
+and controls are sent only after a deliberate menu selection. Start at Login is
+off by default and uses the macOS login-item setting; migration from an
+existing headless service offers to enable it explicitly. Keep Mac Awake While
+Running is also off by default; when enabled it blocks App Nap and idle system
+sleep only while the bridge is running, without keeping the display on. The app
+survives system sleep regardless: monitoring pauses on suspend, and a bridge
+that died while asleep or has become unresponsive is restarted automatically.
 
 The packaged app does not require this source checkout or a separate Node.js
 installation. Runtime files are read from the app bundle. Writable files are:
