@@ -1,6 +1,6 @@
 # Sky Control - Skyworth SWM100 Wi-Fi module community app
 
-Control your air conditioner from your phone or computer — even if the
+Control your air conditioner from your phone or computer, even if the
 manufacturer's app has stopped working. Sky Control is a free, independent
 project that runs entirely on your own home network, with no account, cloud
 service, or subscription required. Targeted for units with a Skyworth SWM100 Wi-Fi module.
@@ -21,10 +21,9 @@ even though the hardware is fine.
 
 Sky Control replaces that app with a small program — called the bridge —
 that runs on a Mac and hosts a simple web page. You open that page on any
-phone, tablet, or computer on your home network, and it talks to the air
-conditioner directly, so nothing has to go through the internet or a
-manufacturer's servers. (There's also a way to skip the bridge entirely if
-you use Home Assistant — see the installing section below.)
+phone, tablet, or computer on your home network or remotely via vpn access. It talks to the air
+conditioner directly from the bridge, so nothing has to go through the internet or a
+manufacturer's app servers.
 
 The same page adapts from a full desktop dashboard to a phone-sized layout:
 
@@ -82,10 +81,10 @@ integration is the one option that doesn't need a Mac at all: it skips the
 bridge and talks to the air conditioner directly from wherever Home Assistant
 already runs (Home Assistant OS, a Raspberry Pi, a NAS, and so on).
 
-### Ask an AI assistant to install it (start here)
+### Ask an AI assistant to install it for you
 
-For any of the three options, the easiest path is to copy this link and give
-it to an AI coding assistant, such as Claude, ChatGPT, or GitHub Copilot:
+For any of the three options, the easiest path these days is to copy this link and give
+it to an AI assistant, such as Claude Cowork/Code, ChatGPT/Codex, Grok Build, or GitHub Copilot:
 
 ```
 https://github.com/kevin-eveleigh/sky-control
@@ -97,9 +96,7 @@ day, a Mac you leave running, or an existing Home Assistant instance — and
 let it choose. The project includes machine-readable setup instructions that
 let an assistant follow any of the three options below on its own.
 
-The rest of this section is the full manual instructions for each option —
-useful if you're installing it yourself, or want to check what an assistant
-did.
+The rest of this section is the full manual instructions for each option.
 
 ### Option 1: macOS menu-bar app
 
@@ -162,7 +159,7 @@ configuration is no longer needed.
 ### Option 2: macOS headless service
 
 Best for a Mac you leave running all the time as a background server, with no
-window or menu-bar icon.
+window or menu-bar icon. Could easily be modified to use for Linux installs.
 
 **Requirements:** macOS and Node.js 22.13 or newer. No administrator access
 needed. The Mac must be on the same local network as the air conditioner,
@@ -313,7 +310,7 @@ air conditioner or how you use it is ever sent anywhere else.
 This also means anyone who can reach Sky Control on your network can see its
 status and send it commands, so it's meant to stay on a network you trust
 (and it's a good idea to turn on the optional token password). Don't set it up to
-be reachable from the public internet.
+be directly reachable from the public internet.
 
 To control your air conditioner while you're away from home, install Sky
 Control on a laptop or PC that stays at home, and use a private VPN — such as
@@ -436,14 +433,11 @@ rate limiting, and internet-facing hardening are outside this milestone.
 > Public beta safety: Sky Control is designed for a trusted LAN or private VPN.
 > Never port-forward it or expose it directly to the public internet.
 
-#### Advanced remote access with WireGuard
+#### Remote access with WireGuard
 
 Run WireGuard on a router or another always-on host, connect the remote phone to
-that private VPN, and visit the bridge's VPN-reachable private address. Restrict
-the VPN peer to the LAN ranges and ports it needs, keep `AIRCO_TOKEN` enabled,
-and keep the bridge's HTTP port closed on the public WAN interface. WireGuard is
-not bundled or configured by this project. Tailscale, which runs on top of
-WireGuard, works the same way and can be simpler to set up.
+that private VPN, and visit the bridge's VPN-reachable address. WireGuard is not bundled or configured by this project. 
+Some routers like FRITZ!Box have built in WireGuard options these days. 
 
 See [SECURITY.md](SECURITY.md) for reporting and operational guidance.
 
@@ -469,6 +463,7 @@ contents. Review any file before posting it publicly.
 
 #### Discovery finds nothing
 
+- Wi-Fi setup for the aircon unit needs to have been done earlier with manufacturers app 
 - Confirm the bridge and air conditioner are on the same non-guest LAN.
 - Check that client isolation is disabled for that Wi-Fi network.
 - Allow UDP broadcast/multicast ports 1990–1995 in the local firewall.
@@ -489,7 +484,7 @@ the entity.
 #### Authentication fails
 
 - Use the same token configured on the bridge; tokens are case-sensitive.
-- When `AIRCO_TOKEN` is set, the UI cannot replace or clear it.
+- When `AIRCO_TOKEN` is set via .env, the UI cannot replace or clear it.
 - Clear the browser's stored token and reconnect after changing the server token.
 
 #### The menu says the headless service conflicts
