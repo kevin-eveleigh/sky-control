@@ -12,6 +12,8 @@ same family, but that's a lead worth testing, not a guarantee:
   <img src="docs/assets/abandoned-app-screen.webp" alt="Abandoned legacy air-conditioner controller app" width="28%">
 </p>
 
+Names of some the discontinued SWM100 apps: Skyworth Smart Control, Clima24H, Easy Home AMS, Teknopoint Smart Controller, Joannes Air Conditioner, Ferroli Air Conditioner, Lamborghini Air Conditioner, Cvmore Air Conditioner
+
 ## What is Sky Control?
 
 Many air conditioners are controlled by a Wi-Fi module and a companion phone
@@ -19,11 +21,10 @@ app. When that app is discontinued, removed from the app store, or simply
 stops working, the air conditioner's smart features stop working with it —
 even though the hardware is fine.
 
-Sky Control replaces that app with a small program — called the bridge —
-that runs on a Mac and hosts a simple web page. You open that page on any
+Sky Control replaces that app with a small program (called the bridge)
+that runs on a Mac and hosts a simple web page. You can open that page on any
 phone, tablet, or computer on your home network or remotely via vpn access. It talks to the air
-conditioner directly from the bridge, so nothing has to go through the internet or a
-manufacturer's app servers.
+conditioner directly from the bridge, so nothing has to go through a manufacturer's app server.
 
 The same page adapts from a full desktop dashboard to a phone-sized layout:
 
@@ -32,7 +33,7 @@ The same page adapts from a full desktop dashboard to a phone-sized layout:
   <img src="output/playwright/sky-control-mobile.png" alt="Sky Control mobile dashboard" width="24%">
 </p>
 
-On a Mac, an optional menu-bar app keeps things running quietly in the background:
+On a Mac, an optional menu-bar app keeps things running quietly in the background and gives you some ac control:
 
 <p align="center">
   <img src="docs/assets/sky-control-menu.png" alt="Sky Control menu-bar app with the bridge running and an air conditioner submenu open" width="58%">
@@ -213,7 +214,7 @@ are not required.
 
 This is a beta custom integration. It is not part of Home Assistant Core and is
 not in the default HACS catalogue. Only one physical Tekno Point SKY unit is
-confirmed. Other Clima24, Easy Home AMS, Tekno Point Smart Controller, and
+confirmed. Other Clima24H, Easy Home AMS, Tekno Point Smart Controller, and
 SWM100-family units are still candidates until tested.
 
 **Requirements:**
@@ -332,14 +333,14 @@ shows the kind of abandoned controller app that suggests a unit in this family.
 
 | Manufacturer | Physical unit | Legacy app / Wi-Fi protocol | Verification |
 | --- | --- | --- | --- |
-| Tekno Point | SKY (one tested unit) | Clima24 / Skyworth SWM100 | Discovery, status and control verified against captured Clima24 traffic and live hardware |
+| Tekno Point | SKY (one tested unit) | Clima24H / Skyworth SWM100 | Discovery, status and control verified against captured Clima24H traffic and live hardware |
 
 ### Likely compatible and seeking testers
 
 | Candidate | Evidence | Status |
 | --- | --- | --- |
 | Units previously controlled by Tekno Point Smart Controller | Appears related to the tested app family | Models other than the tested SKY unit are unconfirmed |
-| Other units previously controlled by Clima24 | The confirmed Tekno Point SKY unit used Clima24 | Models other than the tested SKY unit are unconfirmed |
+| Other units previously controlled by Clima24H | The confirmed Tekno Point SKY unit used Clima24H | Models other than the tested SKY unit are unconfirmed |
 | Units previously controlled by Easy Home AMS | Appears to be a branded variant of the same app family | Physical compatibility unconfirmed |
 | Other units reporting SWM100-family protocol values | Protocol-family signal only | Seeking sanitized diagnostics and hardware tests |
 
@@ -360,7 +361,7 @@ contributing to the project, or building an AI assistant/agent workflow
 around it.
 
 Sky Control is an unofficial, local-first project and is not affiliated with
-or endorsed by Skyworth, Tekno Point, Clima24, Easy Home, or any other
+or endorsed by Skyworth, Tekno Point, Clima24H, Easy Home, or any other
 manufacturer. Manufacturer and app names are used only to describe tested or
 possible compatibility.
 
