@@ -2,6 +2,7 @@ import { access, readFile, readdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { appExecutables, executableUuidOffsets } from "./macos-build-uuids.mjs";
 
 const dist = path.resolve("dist");
 
@@ -24,6 +25,19 @@ const appPath = process.env.SKY_CONTROL_APP_PATH || (await findApp(dist));
 if (!appPath) throw new Error("Packaged Sky Control.app was not found under dist/.");
 
 const contents = path.join(appPath, "Contents");
+const buildUuids = new Set();
+for (const executable of await appExecutables(appPath)) {
+  const bytes = await readFile(executable);
+  for (const offset of executableUuidOffsets(bytes)) {
+    const uuid = bytes.subarray(offset, offset + 16).toString("hex");
+    // Electron's LLVM-generated UUIDs start with LLD. Our packaging hook must
+    // replace these shared IDs before signing, including in every helper.
+    if (uuid.startsWith("4c4c44") || buildUuids.has(uuid)) {
+      throw new Error(`Packaged executable has a shared build UUID: ${executable}`);
+    }
+    buildUuids.add(uuid);
+  }
+}
 const required = [
   path.join(contents, "MacOS", "Sky Control"),
   path.join(contents, "Resources", "app.asar"),
@@ -82,6 +96,25 @@ const result = spawnSync("plutil", ["-extract", "LSUIElement", "raw", "-o", "-",
 });
 if (result.status !== 0 || result.stdout.trim() !== "true") {
   throw new Error("Packaged application does not declare LSUIElement=true.");
+}
+const localNetwork = spawnSync(
+  "plutil",
+  ["-extract", "NSLocalNetworkUsageDescription", "raw", "-o", "-", plist],
+  { encoding: "utf8" },
+);
+if (localNetwork.status !== 0 || !localNetwork.stdout.trim()) {
+  throw new Error("Packaged application does not declare NSLocalNetworkUsageDescription.");
+}
+
+const signature = spawnSync("codesign", ["--verify", "--deep", "--strict", appPath], {
+  encoding: "utf8",
+});
+if (signature.status !== 0) {
+  throw new Error(`Packaged application signature does not verify: ${signature.stderr.trim()}`);
+}
+const details = spawnSync("codesign", ["-dv", appPath], { encoding: "utf8" });
+if (!details.stderr.includes("Identifier=org.skycontrol.desktop")) {
+  throw new Error("Packaged application is not signed with the org.skycontrol.desktop identifier.");
 }
 
 async function rejectEnvironmentFile(directory) {

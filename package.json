@@ -54,6 +54,7 @@
     "productName": "Sky Control",
     "electronVersion": "43.4.0",
     "asar": true,
+    "afterPack": "support/macos-build-uuids.mjs",
     "artifactName": "Sky-Control-${version}-${arch}.${ext}",
     "directories": {
       "output": "dist",
@@ -89,13 +90,15 @@
     "mac": {
       "category": "public.app-category.utilities",
       "icon": "desktop/assets/app-icon.png",
-      "identity": null,
+      "identity": "-",
+      "hardenedRuntime": false,
       "target": [
         "dmg",
         "zip"
       ],
       "extendInfo": {
-        "LSUIElement": true
+        "LSUIElement": true,
+        "NSLocalNetworkUsageDescription": "Sky Control talks directly to your air conditioners on your home network to read their status and send commands."
       }
     },
     "dmg": {

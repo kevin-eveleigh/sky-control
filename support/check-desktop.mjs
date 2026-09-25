@@ -46,8 +46,18 @@ await rejectPersonalPath(path.join(root, ".next", "desktop-standalone"));
 if (metadata.build?.mac?.extendInfo?.LSUIElement !== true) {
   throw new Error("Desktop packaging must set LSUIElement so no Dock icon is shown.");
 }
-if (metadata.build?.mac?.identity !== null) {
-  throw new Error("Private beta packaging must not discover or use a signing identity.");
+if (!metadata.build?.mac?.extendInfo?.NSLocalNetworkUsageDescription) {
+  throw new Error(
+    "Desktop packaging must describe why it needs Local Network access.",
+  );
+}
+// Ad-hoc signing seals the UUID changes without using a keychain certificate.
+// Reliable identity across updates still requires an Apple-issued identity.
+if (metadata.build?.mac?.identity !== "-") {
+  throw new Error("Private beta packaging must ad-hoc sign and never use a signing identity.");
+}
+if (metadata.build?.afterPack !== "support/macos-build-uuids.mjs") {
+  throw new Error("Desktop packaging must assign app-specific build UUIDs before signing.");
 }
 if (JSON.stringify(metadata.build?.extraResources || []).includes(".env.local")) {
   throw new Error("Desktop packaging must never include .env.local.");

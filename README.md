@@ -151,6 +151,12 @@ installation. Runtime files are read from the app bundle. Writable files are:
 | Optional bridge environment | `~/Library/Application Support/Sky Control/.env.local` |
 | Menu-bar bridge log | `~/Library/Logs/Sky Control/bridge.log` |
 
+If the bridge runs but a status refresh reports `HOST_UNREACHABLE`, check
+**System Settings → Privacy & Security → Local Network → Sky Control**.
+The same error can mean either an unreachable unit or a macOS permission block;
+a successful connection from Terminal alone does not prove the app has access.
+After granting access, refresh device status again.
+
 To uninstall, turn off **Start at Login**, choose **Quit**, and move Sky Control
 from Applications to the Trash. Configuration is deliberately retained. If the
 app cannot open, disable it in **System Settings → General → Login Items**. Remove
