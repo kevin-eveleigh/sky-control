@@ -137,14 +137,19 @@ async function packageNotice(runtimeDirectory) {
 await access(runtimeModules);
 const reachable = macosReachableNames();
 const tracedDirectories = [];
+const tracedNames = new Set();
 for (const directory of await packageDirectories(runtimeModules)) {
   const traced = JSON.parse(await readFile(path.join(directory, "package.json"), "utf8"));
+  tracedNames.add(traced.name);
   if (isPlatformBinary(traced.name)) continue;
   if (lockfile.packages[`node_modules/${traced.name}`] && !reachable.has(traced.name)) continue;
   tracedDirectories.push(directory);
 }
 const notices = await Promise.all(tracedDirectories.map(packageNotice));
-for (const name of macosBinaryNames()) {
+// The prebuilt image binaries only ship alongside sharp. next.config.ts keeps sharp out of
+// the trace while nothing renders through next/image; if that changes, they return here.
+const imageBinaries = tracedNames.has("sharp") ? macosBinaryNames() : [];
+for (const name of imageBinaries) {
   const locked = lockedPackage(name);
   notices.push({
     name,
@@ -180,9 +185,13 @@ const body = [
   "",
   "Sky Control is distributed under the MIT License. The desktop bundle also",
   "contains the runtime packages listed below. Each package's distributed license",
-  "text is reproduced with its declared package version and licence ID. The macOS",
-  "prebuilt image binaries are listed for both Apple silicon and Intel so that this",
-  "file stays identical whichever machine produced the build.",
+  "text is reproduced with its declared package version and licence ID.",
+  ...(imageBinaries.length
+    ? [
+        "The macOS prebuilt image binaries are listed for both Apple silicon and Intel",
+        "so that this file stays identical whichever machine produced the build.",
+      ]
+    : []),
   "Electron additionally ships its Chromium and Node.js notices inside the app",
   "bundle as `LICENSES.chromium.html` and related runtime licence files.",
   "",
