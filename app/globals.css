@@ -1074,6 +1074,16 @@ footer button:hover {
 .config-scan button {
   flex: 0 0 auto;
 }
+.address-check {
+  font-size: 0.68rem;
+  margin-top: -6px;
+}
+.address-check.found {
+  color: var(--accent);
+}
+.address-check.missing {
+  color: var(--danger);
+}
 .discovered {
   border-top: 1px solid var(--line);
   padding-top: 14px;

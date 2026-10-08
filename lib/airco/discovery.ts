@@ -1,4 +1,6 @@
 import dgram from "node:dgram";
+import { lookup } from "node:dns/promises";
+import { isIPv4 } from "node:net";
 import { DEFAULT_CONTROL_PORT } from "./constants";
 import type { DeviceInfo } from "./types";
 
@@ -15,9 +17,10 @@ const PROBE = Buffer.from([0xbe, 0x01]);
 const ATTEMPTS = 3;
 const ATTEMPT_GAP_MS = 350;
 const LISTEN_MS = 2400;
+const DISCOVERY_PORT = 1995;
 
 const TARGETS: DiscoveryTarget[] = [
-  { bindPort: 1992, destination: "255.255.255.255", destinationPort: 1995 },
+  { bindPort: 1992, destination: "255.255.255.255", destinationPort: DISCOVERY_PORT },
   {
     bindPort: 1990,
     destination: "239.253.0.1",
@@ -61,7 +64,18 @@ export function parseDiscoveryReply(
   };
 }
 
-function listen(target: DiscoveryTarget, found: Map<string, DeviceInfo>) {
+type Exchange = {
+  /** 0 lets the OS pick a port; units reply to whichever port asked. */
+  bindPort: number;
+  destination: string;
+  destinationPort: number;
+  broadcast?: boolean;
+  multicast?: string;
+  /** Return true once the answer is in, to stop listening early. */
+  onMessage: (message: Buffer, remote: dgram.RemoteInfo) => boolean | void;
+};
+
+function exchange(options: Exchange) {
   return new Promise<void>((resolve, reject) => {
     const socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
     const timers = new Set<ReturnType<typeof setTimeout>>();
@@ -99,19 +113,18 @@ function listen(target: DiscoveryTarget, found: Map<string, DeviceInfo>) {
 
     socket.once("error", shutdown);
     socket.on("message", (message, remote) => {
-      const device = parseDiscoveryReply(message, remote.address);
-      if (device) found.set(device.mac || device.host, device);
+      if (options.onMessage(message, remote)) shutdown();
     });
 
-    socket.bind(target.bindPort, () => {
+    socket.bind(options.bindPort, () => {
       try {
-        socket.setBroadcast(true);
-        if (target.multicast) socket.addMembership(target.multicast);
+        if (options.broadcast) socket.setBroadcast(true);
+        if (options.multicast) socket.addMembership(options.multicast);
         for (let attempt = 0; attempt < ATTEMPTS; attempt += 1) {
           later(() => {
             // The callback keeps a send failure from surfacing as an
             // unhandled 'error' event on an otherwise healthy scan.
-            socket.send(PROBE, target.destinationPort, target.destination, () => {});
+            socket.send(PROBE, options.destinationPort, options.destination, () => {});
           }, attempt * ATTEMPT_GAP_MS);
         }
         later(() => shutdown(), LISTEN_MS);
@@ -119,6 +132,17 @@ function listen(target: DiscoveryTarget, found: Map<string, DeviceInfo>) {
         shutdown(error as Error);
       }
     });
+  });
+}
+
+function listen(target: DiscoveryTarget, found: Map<string, DeviceInfo>) {
+  return exchange({
+    ...target,
+    broadcast: true,
+    onMessage(message, remote) {
+      const device = parseDiscoveryReply(message, remote.address);
+      if (device) found.set(device.mac || device.host, device);
+    },
   });
 }
 
@@ -132,4 +156,33 @@ export async function discoverDevices(): Promise<DeviceInfo[]> {
   );
   if (failures.length === TARGETS.length) throw failures[0].reason;
   return [...found.values()];
+}
+
+/**
+ * Asks one known address to identify itself. Broadcast and multicast stop at
+ * the edge of the local network, but this is a plain unicast datagram, so it
+ * also reaches a unit through a routed VPN. Returns null when nothing
+ * compatible answers in time.
+ */
+export async function identifyDevice(
+  host: string,
+  { controlPort = DEFAULT_CONTROL_PORT, discoveryPort = DISCOVERY_PORT } = {},
+): Promise<DeviceInfo | null> {
+  // Replies come from an IP address, so a hostname has to be resolved first
+  // for the answer to be matched to the unit that was asked.
+  const address = isIPv4(host) ? host : (await lookup(host, { family: 4 })).address;
+  let device: DeviceInfo | null = null;
+  await exchange({
+    bindPort: 0,
+    destination: address,
+    destinationPort: discoveryPort,
+    onMessage(message, remote) {
+      if (remote.address !== address) return false;
+      // Keep what the user typed: a hostname survives a DHCP change, the
+      // address it resolved to today might not.
+      device = parseDiscoveryReply(message, host, controlPort);
+      return device !== null;
+    },
+  });
+  return device;
 }

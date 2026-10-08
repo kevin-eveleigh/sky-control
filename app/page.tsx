@@ -108,6 +108,7 @@ type ControlAction = keyof typeof STATE_KEY;
 type PendingMap = Partial<Record<ControlAction, unknown>>;
 type BridgeResponse = BridgeSnapshot & {
   addedId?: string;
+  device?: DeviceInfo;
   discovered?: DeviceInfo[];
   confirmed?: boolean;
 };
@@ -503,8 +504,13 @@ export default function Home() {
   const [editing, setEditing] = useState<AircoConfig | null | undefined>(undefined);
   const [form, setForm] = useState<AircoInput>(blankAirco);
   const [discovered, setDiscovered] = useState<DeviceInfo[]>([]);
+  const [addressCheck, setAddressCheck] = useState<{ found: boolean; message: string } | null>(
+    null,
+  );
 
   const selectedIdRef = useRef("");
+  /** Bumped whenever the dialog's address changes, so a late check result is dropped. */
+  const addressCheckRun = useRef(0);
   const temperatureRef = useRef<number | null>(null);
   const temperatureTimer = useRef<number | null>(null);
   const settleTimer = useRef<number | null>(null);
@@ -818,6 +824,8 @@ export default function Home() {
   function openAdd() {
     setEditing(null);
     setForm(blankAirco());
+    addressCheckRun.current += 1;
+    setAddressCheck(null);
     setError("");
   }
 
@@ -833,10 +841,14 @@ export default function Home() {
       model: airco.model,
       protocol: airco.protocol,
     });
+    addressCheckRun.current += 1;
+    setAddressCheck(null);
     setError("");
   }
 
   function applyDiscoveredDevice(device: DeviceInfo) {
+    addressCheckRun.current += 1;
+    setAddressCheck(null);
     setForm((current) => ({
       ...current,
       host: device.host,
@@ -846,6 +858,50 @@ export default function Home() {
       model: device.model,
       protocol: device.protocol,
     }));
+  }
+
+  /**
+   * Scanning only covers the bridge's own network segment. Checking a typed
+   * address works anywhere the bridge can route to, including over a VPN, and
+   * fills in the module details a scan would have provided. The result is shown
+   * inside the dialog because the page's error banner sits behind it.
+   *
+   * A check can take a few seconds, and the dialog stays editable meanwhile. A
+   * result that arrives after the address was edited, a scanned unit was picked,
+   * or the dialog was reopened belongs to a form that no longer exists, and is
+   * dropped rather than written over the user's newer choice.
+   */
+  async function checkAddress() {
+    const run = (addressCheckRun.current += 1);
+    const current = () => run === addressCheckRun.current;
+    setBusy("identify");
+    setAddressCheck(null);
+    try {
+      const { device } = await request("/api/identify", "POST", {
+        host: form.host,
+        port: form.port,
+      });
+      if (!current()) return;
+      if (!device) throw new Error("The bridge returned no module details.");
+      setForm((current) => ({
+        ...current,
+        // The typed port is kept: discovery replies do not carry one.
+        host: device.host,
+        mac: device.mac,
+        deviceName: device.name,
+        model: device.model,
+        protocol: device.protocol,
+      }));
+      setAddressCheck({
+        found: true,
+        message: `Found ${device.name || "a compatible module"} at ${device.host}.`,
+      });
+    } catch (cause) {
+      if (!current()) return;
+      setAddressCheck({ found: false, message: messageOf(cause, "Could not check this address") });
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function saveAirco(event: React.FormEvent) {
@@ -1503,7 +1559,25 @@ export default function Home() {
                   IP address or hostname
                   <input
                     value={form.host}
-                    onChange={(event) => setForm({ ...form, host: event.target.value })}
+                    onChange={(event) => {
+                      // Module details found for a new unit belong to the address they
+                      // came from. A saved unit keeps them: its MAC is what recognises
+                      // the same unit after its address changes.
+                      setForm({
+                        ...form,
+                        host: event.target.value,
+                        ...(editing
+                          ? {}
+                          : {
+                              mac: undefined,
+                              deviceName: undefined,
+                              model: undefined,
+                              protocol: undefined,
+                            }),
+                      });
+                      addressCheckRun.current += 1;
+                      setAddressCheck(null);
+                    }}
                     placeholder="ac.local"
                     required
                   />
@@ -1522,6 +1596,31 @@ export default function Home() {
                   />
                 </label>
               </div>
+              <div className="config-scan">
+                <div>
+                  <strong>Check this address</strong>
+                  <small>
+                    Ask the unit to identify itself. Also works over a VPN, where scanning
+                    can&apos;t reach.
+                  </small>
+                </div>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={busy !== null || !form.host.trim()}
+                  onClick={checkAddress}
+                >
+                  {busy === "identify" ? "Checking…" : "Check"}
+                </button>
+              </div>
+              {addressCheck && (
+                <p
+                  className={`address-check ${addressCheck.found ? "found" : "missing"}`}
+                  role={addressCheck.found ? "status" : "alert"}
+                >
+                  {addressCheck.message}
+                </p>
+              )}
               {(form.deviceName || form.mac) && (
                 <div className="hardware-summary">
                   <span>Wi-Fi module</span>
