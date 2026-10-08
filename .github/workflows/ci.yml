@@ -40,6 +40,12 @@ jobs:
       - run: npm ci
       - run: npm ci --prefix desktop/tooling
       - run: npm run desktop:package
+        env:
+          # electron-builder skips signing for pull requests to keep certificate
+          # secrets away from untrusted forks. This build signs ad-hoc (identity
+          # "-") with no certificate or secret, and that signature is what seals
+          # the executable UUIDs changed in afterPack, so it must also run here.
+          CSC_FOR_PULL_REQUEST: "true"
 
   home-assistant:
     name: Home Assistant 2026.8.2

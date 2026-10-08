@@ -22,6 +22,18 @@ and releases will use Semantic Versioning once published.
 - When adding a unit, module details found for one address are cleared once
   the address is edited, so they can't be saved with a different unit. A check
   result that arrives after the address changed is ignored for the same reason.
+- The macOS desktop package no longer fails in CI on a false personal-path
+  match: GitHub runners' shared home folder also appears inside prebuilt
+  third-party binaries. Local builds are still checked for the home folder.
+  Pull-request builds are now ad-hoc signed like other builds; electron-builder
+  skipped signing for them, leaving the app with an invalid signature.
+
+### Changed
+
+- The macOS app is about half the size (625 MB to 313 MB unpacked). The
+  menu-bar shell no longer carries a second copy of the web dependencies it
+  never uses, and the unused image optimizer (sharp and its LGPL libvips
+  binaries) is left out of the bridge. Third-party notices list only what ships.
 
 ## [0.3.1] - 2026-08-17
 

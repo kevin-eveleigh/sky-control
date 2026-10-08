@@ -1,8 +1,8 @@
 import { access, readFile, readdir } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { appExecutables, executableUuidOffsets } from "./macos-build-uuids.mjs";
+import { personalPathNeedles } from "./personal-paths.mjs";
 
 const dist = path.resolve("dist");
 
@@ -75,7 +75,7 @@ if (asarList.stdout.split("\n").some((entry) => entry.startsWith("/desktop/tooli
 }
 
 async function rejectPersonalPath(directory) {
-  const needles = [process.cwd(), os.homedir()].map((item) => Buffer.from(item));
+  const needles = personalPathNeedles(process.cwd());
   const entries = await readdir(directory, { withFileTypes: true });
   for (const entry of entries) {
     const item = path.join(directory, entry.name);

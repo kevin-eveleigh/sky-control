@@ -1,7 +1,7 @@
 import { access, readFile, readdir } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { personalPathNeedles } from "./personal-paths.mjs";
 
 const root = process.cwd();
 const metadata = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
@@ -28,7 +28,7 @@ if (!desktopMain.includes('!app.isPackaged && process.env.SKY_CONTROL_DESKTOP_TE
 }
 
 async function rejectPersonalPath(directory) {
-  const needles = [root, os.homedir()].map((item) => Buffer.from(item));
+  const needles = personalPathNeedles(root);
   const entries = await readdir(directory, { withFileTypes: true });
   for (const entry of entries) {
     const item = path.join(directory, entry.name);
