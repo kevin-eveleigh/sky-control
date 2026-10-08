@@ -12,6 +12,7 @@ import {
 } from "../desktop/core/airco-menu.mjs";
 import { BridgeApi, BridgeApiError } from "../desktop/core/bridge-api.mjs";
 import { MenuRebuildGate } from "../desktop/core/menu-rebuild-gate.mjs";
+import { personalPathNeedles } from "../support/personal-paths.mjs";
 import {
   loadDesktopConfiguration,
   preserveConfiguration,
@@ -608,4 +609,19 @@ test("explicit LaunchAgent migration unloads the service and preserves every pli
     ["launchctl", ["bootout", "gui/501/com.fixture-user.sky-control"]],
     ["launchctl", ["bootout", "gui/501/com.fixture-user.sky-control"]],
   ]);
+});
+
+test("packaging checks the checkout and the builder's home folder", () => {
+  const needles = personalPathNeedles("/Users/kim/src/sky-control", {}, "/Users/kim");
+  assert.deepEqual(needles.map(String), ["/Users/kim/src/sky-control", "/Users/kim"]);
+});
+
+test("packaging on GitHub runners skips the shared runner home folder", () => {
+  // Prebuilt binaries compiled on GitHub runners embed /Users/runner/work/…
+  // paths, which say nothing about who built this package.
+  const checkout = "/Users/runner/work/sky-control/sky-control";
+  const needles = personalPathNeedles(checkout, { GITHUB_ACTIONS: "true" }, "/Users/runner");
+  assert.deepEqual(needles.map(String), [checkout]);
+  const libvips = Buffer.from("/Users/runner/work/sharp-libvips/sharp-libvips/target/lib");
+  assert.equal(needles.some((needle) => libvips.includes(needle)), false);
 });
