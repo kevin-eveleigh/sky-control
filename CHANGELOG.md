@@ -5,6 +5,23 @@ and releases will use Semantic Versioning once published.
 
 ## [Unreleased]
 
+### Added
+
+- **Check this address** in the Add airco dialog asks a typed-in address to
+  identify itself and fills in the module details a scan would provide. It
+  uses a direct UDP request, so it also works across a VPN or routed network
+  where scanning can't reach. Backed by a new read-only `POST /api/identify`.
+- Linux install option: a hardened systemd unit and environment template in
+  `support/linux/`, with install, update and uninstall steps in the README.
+- Guide for running the bridge on a remote server, with a split-tunnel
+  WireGuard connection to the home router and private access through Tailscale
+  (`docs/remote-server.md`).
+
+### Fixed
+
+- When adding a unit, module details found for one address are cleared once
+  the address is edited, so they can't be saved with a different unit.
+
 ## [0.3.1] - 2026-08-17
 
 ### Fixed

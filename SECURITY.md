@@ -23,8 +23,13 @@ maintainer availability; the report will be assessed before public disclosure.
 - Never port-forward the HTTP port or expose it through a public tunnel, proxy,
   or firewall rule.
 - Enable a strong access token on shared LANs and all VPN deployments.
+- A bridge on a remote server must listen on loopback only and be reached
+  through a private VPN, never a public port, proxy or funnel. Its tunnel to the
+  home network should only route to the units it controls; see
+  [docs/remote-server.md](docs/remote-server.md).
 - Test unfamiliar hardware deliberately and keep someone present for initial controls.
-- Protect `.env.local`, `data/`, browser storage, and LaunchAgent runtime files.
+- Protect `.env.local`, `data/`, browser storage, LaunchAgent runtime files and,
+  on Linux, `/etc/sky-control.env` and `/var/lib/sky-control`.
 - Treat the web origin as privileged: anyone who can run script in it may read
   the browser's stored bearer token.
 

@@ -22,7 +22,7 @@ stops working, the air conditioner's smart features stop working with it —
 even though the hardware is fine.
 
 Sky Control replaces that app with a small program (called the bridge)
-that runs on a Mac and hosts a simple web page. You can open that page on any
+that runs on a Mac or Linux machine and hosts a simple web page. You can open that page on any
 phone, tablet, or computer on your home network or remotely via vpn access. It talks to the air
 conditioner directly from the bridge, so nothing has to go through a manufacturer's app server.
 
@@ -50,7 +50,8 @@ a native climate device.
 
 ## What can it do?
 
-- Automatically find your air conditioner on your home Wi-Fi network.
+- Automatically find your air conditioner on your home Wi-Fi network, or
+  check one by its address, which also works over a VPN.
 - Turn it on or off, change modes, and set the temperature, with live status.
 - Control more than one air conditioner, each with its own name.
 - Work from a phone, tablet, or computer browser — no app store needed.
@@ -68,23 +69,24 @@ version, native mobile apps, or automatic Wi-Fi setup for new devices. See
 
 ## Installing Sky Control
 
-Sky Control currently runs three ways:
+Sky Control currently runs four ways:
 
 | Option | Runs on | Best if |
 | --- | --- | --- |
 | **Menu-bar app** | Your Mac | You want the simplest day-to-day experience, with status and controls right in the menu bar |
 | **Headless service** | Your Mac | You want it running quietly in the background all the time, e.g. on a Mac mini |
 | **Home Assistant integration** (beta) | Wherever Home Assistant runs — no Mac required | You already use Home Assistant and want a native climate entity |
+| **Linux service** | A Linux machine with systemd: a Raspberry Pi or home server, or a remote server with a VPN tunnel to your home | You want an always-on bridge without a Mac |
 
-There's no Windows version yet — the menu-bar app and headless service are the
-two ways to run the bridge, and both need a Mac. The Home Assistant
-integration is the one option that doesn't need a Mac at all: it skips the
-bridge and talks to the air conditioner directly from wherever Home Assistant
-already runs (Home Assistant OS, a Raspberry Pi, a NAS, and so on).
+There's no Windows version yet. The bridge runs on a Mac (menu-bar app or
+headless service) or on Linux (systemd service). The Home Assistant
+integration skips the bridge entirely and talks to the air conditioner
+directly from wherever Home Assistant already runs (Home Assistant OS, a
+Raspberry Pi, a NAS, and so on).
 
 ### Ask an AI assistant to install it for you
 
-For any of the three options, the easiest path these days is to copy this link and give
+For any of the options, the easiest path these days is to copy this link and give
 it to an AI assistant, such as Claude Cowork/Code, ChatGPT/Codex, Grok Build, or GitHub Copilot:
 
 ```
@@ -93,9 +95,9 @@ https://github.com/kevin-eveleigh/sky-control
 
 Paste it in and ask something like *"Please install and set this up for me."*
 Tell it which option you want, or describe your setup — a Mac you use every
-day, a Mac you leave running, or an existing Home Assistant instance — and
-let it choose. The project includes machine-readable setup instructions that
-let an assistant follow any of the three options below on its own.
+day, a Mac you leave running, an existing Home Assistant instance, or a Linux
+machine — and let it choose. The project includes machine-readable setup
+instructions that let an assistant follow any of the options below on its own.
 
 The rest of this section is the full manual instructions for each option.
 
@@ -166,7 +168,7 @@ configuration is no longer needed.
 ### Option 2: macOS headless service
 
 Best for a Mac you leave running all the time as a background server, with no
-window or menu-bar icon. Could easily be modified to use for Linux installs.
+window or menu-bar icon. For Linux, see [Option 4](#option-4-linux-service).
 
 **Requirements:** macOS and Node.js 22.13 or newer. No administrator access
 needed. The Mac must be on the same local network as the air conditioner,
@@ -202,7 +204,7 @@ turn off Start at Login and quit the app, then run `npm run service:install`
 from a source checkout. Never run both modes (menu-bar and headless) on the
 same port — run only one production bridge per address and port.
 
-### Using it on your phone (Options 1 and 2)
+### Using it on your phone (Options 1, 2 and 4)
 
 Connect the phone to the same trusted Wi-Fi network and open the bridge's local
 URL. On iPhone or iPad, use Safari's Share menu and select **Add to Home Screen**.
@@ -210,6 +212,9 @@ On Android, use the browser menu's **Add to Home screen** or **Install app**
 action. The bridge must remain running for the shortcut to work.
 
 Pin the bridge computer's local IP in your router to make sure it always has the same IP address.
+
+For a bridge on a remote server, open its private VPN address instead; see
+[Running the bridge on a remote server](docs/remote-server.md).
 
 ### Option 3: Home Assistant integration (beta)
 
@@ -308,6 +313,60 @@ and delete its config entry. To uninstall completely, remove the integration in
 HACS (or delete `/config/custom_components/sky_control` for a manual install)
 and restart Home Assistant.
 
+### Option 4: Linux service
+
+Best for an always-on Linux machine: a Raspberry Pi or home server on the same
+network as the air conditioner, or a remote server (such as a VPS) that reaches
+your home network through a VPN tunnel. For the remote setup, follow
+[Running the bridge on a remote server](docs/remote-server.md), which uses
+these steps for the bridge itself.
+
+**Requirements:** a Linux distribution with systemd, sudo, git, and Node.js
+22.13 or newer. Check with `node --version`; if your distribution's package is
+older, install a current release from [nodejs.org](https://nodejs.org/) first.
+A machine at home needs the same UDP broadcast/multicast access for discovery
+as the Mac options. A remote server needs a routed path to the unit's address:
+TCP 1998 for control and UDP 1995 for the address check.
+
+Install the bridge as its own system user, with the code in `/opt/sky-control`
+and device state in `/var/lib/sky-control`:
+
+```bash
+sudo useradd --system --home /opt/sky-control --shell /usr/sbin/nologin skycontrol
+sudo install -d -o skycontrol -g skycontrol -m 750 /opt/sky-control /var/lib/sky-control
+sudo -u skycontrol git clone https://github.com/kevin-eveleigh/sky-control.git /opt/sky-control/app
+sudo -u skycontrol bash -c 'cd /opt/sky-control/app && export HOME=/opt/sky-control && npm ci && npm run build'
+sudo install -m 640 -o root -g skycontrol /opt/sky-control/app/support/linux/sky-control.env.example /etc/sky-control.env
+sudo install -m 644 /opt/sky-control/app/support/linux/sky-control.service /etc/systemd/system/
+```
+
+Review `/etc/sky-control.env` before starting. It listens on `127.0.0.1` by
+default, which suits a server reached through a private proxy. On a trusted
+home network, set `SKY_CONTROL_HOST=0.0.0.0` so phones on the same Wi-Fi can
+connect. Then start it:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now sky-control
+systemctl status sky-control
+curl http://127.0.0.1:3000/api/health
+```
+
+Logs go to the journal: `journalctl -u sky-control`. The service runs with a
+read-only system, so it can only write to `/var/lib/sky-control`.
+
+To update after new commits:
+
+```bash
+sudo -u skycontrol bash -c 'cd /opt/sky-control/app && export HOME=/opt/sky-control && git pull && npm ci && npm run build'
+sudo systemctl restart sky-control
+```
+
+To uninstall, run `sudo systemctl disable --now sky-control`, then remove
+`/etc/systemd/system/sky-control.service`, `/etc/sky-control.env` and
+`/opt/sky-control`. Remove `/var/lib/sky-control` and the `skycontrol` user only
+once you no longer need the configuration.
+
 ## Keeping it private and secure
 
 Sky Control has no cloud service and doesn't need the internet after you've
@@ -323,9 +382,12 @@ To control your air conditioner while you're away from home, install Sky
 Control on a laptop or PC that stays at home, and use a private VPN — such as
 [WireGuard](https://www.wireguard.com/) or [Tailscale](https://tailscale.com/)
 — to connect your phone back into your home network. Once connected through
-the VPN, your phone can reach Sky Control exactly as if you were home. See
+the VPN, your phone can reach Sky Control exactly as if you were home. If
+nothing at home stays on, the bridge can instead run on a remote server that
+connects to your home router's VPN; see
+[Running the bridge on a remote server](docs/remote-server.md). See
 [SECURITY.md](SECURITY.md) for more detail, and the
-[advanced remote-access notes](#advanced-remote-access-with-wireguard) below.
+[advanced remote-access notes](#remote-access-with-wireguard) below.
 
 ## Is my air conditioner compatible?
 
@@ -373,8 +435,8 @@ possible compatibility.
 
 ### Quick start from source (development mode)
 
-This is for developing the bridge itself, not one of the three install
-options above.
+This is for developing the bridge itself, not one of the install options
+above.
 
 ```bash
 # From the Sky Control source checkout:
@@ -389,8 +451,9 @@ the bridge machine's local hostname or LAN address, for example
 `http://bridge-mac.local:3000`.
 
 A fresh install starts with no units. Select **Add airco**, scan the local
-network, or enter a hostname and port manually. Once configured, status and
-controls are available immediately.
+network, or enter a hostname and port manually and select **Check** to confirm
+a compatible module answers there. Once configured, status and controls are
+available immediately.
 
 Use `npm run dev` for web development and `npm run desktop:dev` for the native
 shell against a freshly built standalone runtime. Development mode requires the
@@ -446,6 +509,12 @@ Run WireGuard on a router or another always-on host, connect the remote phone to
 that private VPN, and visit the bridge's VPN-reachable address. WireGuard is not bundled or configured by this project. 
 Some routers like FRITZ!Box have built in WireGuard options these days. 
 
+The same router VPN can also connect a remote Linux server running the bridge
+to your home network, so no machine at home has to stay on.
+[Running the bridge on a remote server](docs/remote-server.md) walks through a
+tunnel that only carries air-conditioner traffic, with private access through
+Tailscale.
+
 See [SECURITY.md](SECURITY.md) for reporting and operational guidance.
 
 ### Safe diagnostics
@@ -474,7 +543,9 @@ contents. Review any file before posting it publicly.
 - Confirm the bridge and air conditioner are on the same non-guest LAN.
 - Check that client isolation is disabled for that Wi-Fi network.
 - Allow UDP broadcast/multicast ports 1990–1995 in the local firewall.
-- Add the unit manually using its DHCP reservation or `.local` hostname.
+- Add the unit manually using its DHCP reservation or `.local` hostname, then
+  select **Check**. Unlike a scan, the check also works across a VPN or routed
+  network.
 
 #### The unit is offline or status never arrives
 
@@ -587,6 +658,9 @@ conventions). If you are an AI assistant asked to install, run, or modify
 Sky Control, read `AGENTS.md` first, then follow the
 [Installing Sky Control](#installing-sky-control) section above for the exact
 commands for whichever option applies: the menu-bar app for a user's personal
-Mac, the headless service for a Mac meant to run unattended, or the Home
+Mac, the headless service for a Mac meant to run unattended, the Home
 Assistant integration when the user already runs Home Assistant and doesn't
-want a separate Mac process.
+want a separate Mac process, or the Linux service for an always-on Linux
+machine. For a bridge on a remote server, also follow
+[docs/remote-server.md](docs/remote-server.md); a remote bridge can't scan, so
+add units by address.

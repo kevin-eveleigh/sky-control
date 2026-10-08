@@ -1,0 +1,34 @@
+# Sky Control bridge as a systemd service. Install with:
+#   sudo install -m 644 support/linux/sky-control.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now sky-control
+#
+# Assumes the layout from the README's Linux option: a `skycontrol` system
+# user, the built checkout in /opt/sky-control/app, settings in
+# /etc/sky-control.env and device state in /var/lib/sky-control. Adjust the
+# node path if `command -v node` is not /usr/bin/node.
+
+[Unit]
+Description=Sky Control airco bridge
+Wants=network-online.target
+After=network-online.target
+# On a remote server that reaches the unit through a WireGuard tunnel, start
+# after it (replace `home` with the tunnel's interface name):
+# Wants=wg-quick@home.service
+# After=wg-quick@home.service
+
+[Service]
+User=skycontrol
+Group=skycontrol
+WorkingDirectory=/opt/sky-control/app
+EnvironmentFile=/etc/sky-control.env
+ExecStart=/usr/bin/node support/start.mjs
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/sky-control
+
+[Install]
+WantedBy=multi-user.target
