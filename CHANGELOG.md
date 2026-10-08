@@ -25,6 +25,8 @@ and releases will use Semantic Versioning once published.
 - The macOS desktop package no longer fails in CI on a false personal-path
   match: GitHub runners' shared home folder also appears inside prebuilt
   third-party binaries. Local builds are still checked for the home folder.
+  Pull-request builds are now ad-hoc signed like other builds; electron-builder
+  skipped signing for them, leaving the app with an invalid signature.
 
 ### Changed
 
