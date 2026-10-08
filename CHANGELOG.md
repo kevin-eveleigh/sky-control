@@ -20,7 +20,8 @@ and releases will use Semantic Versioning once published.
 ### Fixed
 
 - When adding a unit, module details found for one address are cleared once
-  the address is edited, so they can't be saved with a different unit.
+  the address is edited, so they can't be saved with a different unit. A check
+  result that arrives after the address changed is ignored for the same reason.
 
 ## [0.3.1] - 2026-08-17
 
