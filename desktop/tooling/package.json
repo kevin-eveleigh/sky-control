@@ -4,7 +4,15 @@
   "private": true,
   "description": "macOS-only packaging dependencies for Sky Control",
   "devDependencies": {
-    "electron": "43.4.0",
-    "electron-builder": "26.15.3"
+    "electron": "^43.8.11",
+    "electron-builder": "^26.18.1"
+  },
+  "overrides": {
+    "@electron/universal": {
+      "minimatch": "^11.0.9"
+    },
+    "app-builder-lib": {
+      "minimatch": "^11.0.9"
+    }
   }
 }
