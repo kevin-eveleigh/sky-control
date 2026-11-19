@@ -20,7 +20,7 @@ via SVG Repo (https://www.svgrepo.com/).
 Used for the Sky Control app icon, menu-bar tray icon, and favicon.
 ```
 
-## @next/env 16.3.1
+## @next/env 16.4.6
 
 Declared license: MIT
 
@@ -894,7 +894,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## electron 43.4.0
+## electron ^43.8.11
 
 Declared license: MIT
 
@@ -949,7 +949,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-## next 16.3.1
+## next 16.4.6
 
 Declared license: MIT
 
@@ -1082,7 +1082,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## source-map-js 1.2.1
+## source-map-js 1.2.3
 
 Declared license: BSD-3-Clause
 

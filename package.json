@@ -33,7 +33,7 @@
     "lint": "eslint . --ignore-pattern .next"
   },
   "dependencies": {
-    "next": "16.3.1",
+    "next": "^16.4.6",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },
@@ -43,7 +43,7 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.4",
-    "eslint-config-next": "16.3.1",
+    "eslint-config-next": "^16.4.6",
     "tailwindcss": "4.2.1",
     "tsx": "^4.20.6",
     "typescript": "5.9.3"
@@ -52,7 +52,7 @@
   "build": {
     "appId": "org.skycontrol.desktop",
     "productName": "Sky Control",
-    "electronVersion": "43.4.0",
+    "electronVersion": "43.8.11",
     "asar": true,
     "afterPack": "support/macos-build-uuids.mjs",
     "artifactName": "Sky-Control-${version}-${arch}.${ext}",
